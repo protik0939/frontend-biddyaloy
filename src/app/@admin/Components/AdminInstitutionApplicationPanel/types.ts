@@ -10,6 +10,7 @@ export type AdminDashboardSection =
   | "workflow"
   | "faculty"
   | "departments"
+  | "posts"
   | "settings";
 
 export type InstitutionApplicationFormState = CreateInstitutionApplicationPayload;

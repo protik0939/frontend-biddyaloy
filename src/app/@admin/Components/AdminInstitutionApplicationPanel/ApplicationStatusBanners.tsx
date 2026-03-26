@@ -1,7 +1,7 @@
 import { CheckCircle2, Clock3, X, XCircle } from "lucide-react";
 
 import type { InstitutionApplication } from "@/services/Admin/institutionApplication.service";
-import { formatInstitutionType } from "./utils";
+import { formatDateDDMMYYYY, formatInstitutionType } from "./utils";
 
 type Props = {
   latest?: InstitutionApplication;
@@ -13,7 +13,7 @@ export default function ApplicationStatusBanners({
   latest,
   showApprovedBanner,
   onDismissApprovedBanner,
-}: Props) {
+}: Readonly<Props>) {
   const isApproved = latest?.status === "APPROVED";
 
   return (
@@ -28,7 +28,7 @@ export default function ApplicationStatusBanners({
             Institution: {latest.institutionName} ({formatInstitutionType(latest.institutionType)})
           </p>
           <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-100/80">
-            Submitted on {new Date(latest.createdAt).toLocaleString()}
+            Submitted on {formatDateDDMMYYYY(latest.createdAt)}
           </p>
         </article>
       )}

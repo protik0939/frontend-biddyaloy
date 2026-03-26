@@ -3,6 +3,7 @@ import {
   GraduationCap,
   Home,
   Layers,
+  Megaphone,
   School,
   Settings,
   SquareStack,
@@ -18,7 +19,8 @@ export type DepartmentSection =
   | "programs"
   | "courses"
   | "teachers"
-  | "students";
+  | "students"
+  | "posts";
 
 export interface DepartmentSidebarItem {
   label: string;
@@ -36,4 +38,5 @@ export const departmentSidebarItems: DepartmentSidebarItem[] = [
   { label: "Courses", href: "/courses", section: "courses", Icon: BookOpen },
   { label: "Teachers", href: "/teachers", section: "teachers", Icon: GraduationCap },
   { label: "Students", href: "/students", section: "students", Icon: Users },
+  { label: "Posts", href: "/posts", section: "posts", Icon: Megaphone },
 ];

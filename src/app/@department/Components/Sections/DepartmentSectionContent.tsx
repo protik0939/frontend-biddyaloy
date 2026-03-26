@@ -14,12 +14,20 @@ import {
   type Student,
   type Teacher,
 } from "@/services/Department/departmentManagement.service";
+import PostingManagementPanel from "@/Components/PostingManagement/PostingManagementPanel";
 
 import { type DepartmentSection } from "./departmentSections";
 
 interface DepartmentSectionContentProps {
   section: DepartmentSection;
 }
+
+const formatDateDDMMYYYY = (value: string | Date) =>
+  new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(value));
 
 const STATUS_OPTIONS: AccountStatus[] = ["PENDING", "ACTIVE", "DEACTIVATED", "BANNED"];
 
@@ -586,7 +594,7 @@ export default function DepartmentSectionContent({
             <div key={item.id} className="rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-sm">
               <p className="font-medium">{item.name}</p>
               <p className="text-muted-foreground">
-                {new Date(item.startDate).toLocaleDateString()} - {new Date(item.endDate).toLocaleDateString()}
+                {formatDateDDMMYYYY(item.startDate)} - {formatDateDDMMYYYY(item.endDate)}
               </p>
             </div>
           ))}
@@ -869,6 +877,22 @@ export default function DepartmentSectionContent({
         </div>
       </article>
     );
+  }
+
+  if (section === "posts") {
+    return (
+      <article className="space-y-4 rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
+        <h2 className="text-lg font-semibold">Posting Management</h2>
+        <p className="text-sm text-muted-foreground">
+          Create teacher job and student admission posts for your department programs.
+        </p>
+        <PostingManagementPanel scope="DEPARTMENT" />
+      </article>
+    );
+  }
+
+  if (section !== "students") {
+    return null;
   }
 
   return (

@@ -38,6 +38,14 @@ export interface InstitutionFacultyOption {
   shortName: string | null;
 }
 
+export interface InstitutionSemester {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  institutionId: string;
+}
+
 type ApiSuccess<T> = {
   success: true;
   message?: string;
@@ -92,4 +100,60 @@ export async function listInstitutionFaculties() {
   });
 
   return parseResponse<InstitutionFacultyOption[]>(response);
+}
+
+export async function listInstitutionSemesters() {
+  const response = await fetch(getApiPath("/institution-admin/semesters"), {
+    method: "GET",
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  return parseResponse<InstitutionSemester[]>(response);
+}
+
+export async function createInstitutionSemester(payload: {
+  name: string;
+  startDate: string;
+  endDate: string;
+}) {
+  const response = await fetch(getApiPath("/institution-admin/semesters"), {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return parseResponse<InstitutionSemester>(response);
+}
+
+export async function updateInstitutionSemester(
+  semesterId: string,
+  payload: {
+    name?: string;
+    startDate?: string;
+    endDate?: string;
+  },
+) {
+  const response = await fetch(getApiPath(`/institution-admin/semesters/${semesterId}`), {
+    method: "PATCH",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return parseResponse<InstitutionSemester>(response);
+}
+
+export async function deleteInstitutionSemester(semesterId: string) {
+  const response = await fetch(getApiPath(`/institution-admin/semesters/${semesterId}`), {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  return parseResponse<{ id: string }>(response);
 }

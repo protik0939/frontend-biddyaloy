@@ -1,6 +1,7 @@
 import {
   Building2,
   Home,
+  Megaphone,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -9,7 +10,8 @@ export type FacultySection =
   | "overview"
   | "profile"
   | "departments"
-  | "departmentAccounts";
+  | "departmentAccounts"
+  | "posts";
 
 export interface FacultySidebarItem {
   label: string;
@@ -27,4 +29,5 @@ export const facultySidebarItems: FacultySidebarItem[] = [
     section: "departments",
     Icon: Building2,
   },
+  { label: "Posts", href: "/posts", section: "posts", Icon: Megaphone },
 ];

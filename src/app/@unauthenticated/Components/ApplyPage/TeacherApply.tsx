@@ -1,192 +1,60 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { SearchX } from "lucide-react";
 import Reveal from "@/app/@unauthenticated/Components/HomePage/Sections/Reveal";
+import {
+  listTeacherJobPosts,
+  type PublicPostingItem,
+} from "@/services/Public/publicPosting.service";
 
-type JobPosting = {
-  id: string;
-  institution: string;
-  location: string;
-  role: string;
-  summary: string;
-  details: string[];
-  initials: string;
-};
-
-const postings: JobPosting[] = [
-  {
-    id: "job-1",
-    institution: "Biddyaloy Academy",
-    location: "Dhaka, Bangladesh",
-    role: "Senior Mathematics Teacher",
-    summary: "Lead senior math cohorts, mentor junior faculty, and own curriculum alignment.",
-    details: [
-      "Full-time role with campus leadership responsibilities.",
-      "5+ years teaching experience, strong curriculum design background.",
-      "Weekly mentoring sessions and data-driven assessment reviews.",
-    ],
-    initials: "BA",
-  },
-  {
-    id: "job-2",
-    institution: "Greenfield International",
-    location: "Chattogram, Bangladesh",
-    role: "Science Instructor",
-    summary: "Deliver engaging STEM labs and coordinate inter-school science events.",
-    details: [
-      "Contract role with option to convert to full-time.",
-      "Experience with lab safety and experiential learning required.",
-      "Collaborate with operations for STEM club activities.",
-    ],
-    initials: "GI",
-  },
-  {
-    id: "job-3",
-    institution: "Nova City School",
-    location: "Sylhet, Bangladesh",
-    role: "English Language Specialist",
-    summary: "Guide language arts curriculum and run writing improvement workshops.",
-    details: [
-      "Full-time role with literacy program ownership.",
-      "TESOL or equivalent certification preferred.",
-      "Quarterly workshops for writing and speaking proficiency.",
-    ],
-    initials: "NS",
-  },
-  {
-    id: "job-4",
-    institution: "Riverstone College",
-    location: "Rajshahi, Bangladesh",
-    role: "Physics Teacher",
-    summary: "Lead senior physics classes and support lab modernization projects.",
-    details: [
-      "Full-time role with practical lab instruction focus.",
-      "Experience with experiment-based learning preferred.",
-      "Collaborate on term-wise assessment design.",
-    ],
-    initials: "RC",
-  },
-  {
-    id: "job-5",
-    institution: "Lakeview High",
-    location: "Khulna, Bangladesh",
-    role: "History and Civics Teacher",
-    summary: "Deliver inquiry-driven history lessons and guide debate club sessions.",
-    details: [
-      "Full-time role with club leadership responsibilities.",
-      "Strong classroom facilitation skills required.",
-      "Experience with project-based learning is a plus.",
-    ],
-    initials: "LH",
-  },
-  {
-    id: "job-6",
-    institution: "Aurora International School",
-    location: "Gazipur, Bangladesh",
-    role: "Primary STEM Coach",
-    summary: "Coach primary teachers on STEM integration and hands-on activities.",
-    details: [
-      "Full-time role supporting grades 1-5.",
-      "Experience with maker labs or STEM clubs preferred.",
-      "Monthly teacher development workshops.",
-    ],
-    initials: "AI",
-  },
-  {
-    id: "job-7",
-    institution: "Unity Model School",
-    location: "Barishal, Bangladesh",
-    role: "ICT Instructor",
-    summary: "Teach digital literacy, coding basics, and tech-integrated lessons.",
-    details: [
-      "Full-time role with computer lab oversight.",
-      "Comfortable teaching Scratch or web basics.",
-      "Coordinate annual student tech fair.",
-    ],
-    initials: "UM",
-  },
-  {
-    id: "job-8",
-    institution: "Summit Preparatory",
-    location: "Mymensingh, Bangladesh",
-    role: "Chemistry Teacher",
-    summary: "Lead chemistry labs and ensure safe, engaging practical sessions.",
-    details: [
-      "Full-time role with lab inventory management.",
-      "Experience with practical assessments required.",
-      "Support science fair planning and execution.",
-    ],
-    initials: "SP",
-  },
-  {
-    id: "job-9",
-    institution: "Brighton Academy",
-    location: "Comilla, Bangladesh",
-    role: "Early Childhood Educator",
-    summary: "Design play-based learning routines and communicate progress with parents.",
-    details: [
-      "Full-time role for pre-primary program.",
-      "Experience with Montessori or similar pedagogy preferred.",
-      "Monthly parent engagement sessions.",
-    ],
-    initials: "BA",
-  },
-  {
-    id: "job-10",
-    institution: "Harborview School",
-    location: "Rangpur, Bangladesh",
-    role: "Economics Teacher",
-    summary: "Guide senior economics curriculum and mentor business club leaders.",
-    details: [
-      "Full-time role with club sponsorship duties.",
-      "Experience with exam board alignment preferred.",
-      "Host quarterly economics case sessions.",
-    ],
-    initials: "HS",
-  },
-  {
-    id: "job-11",
-    institution: "Sunrise Public School",
-    location: "Jessore, Bangladesh",
-    role: "Bangla Literature Teacher",
-    summary: "Lead literature circles and improve writing proficiency across grades.",
-    details: [
-      "Full-time role with writing lab coordination.",
-      "Experience in curriculum mapping preferred.",
-      "Support annual literary festival planning.",
-    ],
-    initials: "SP",
-  },
-  {
-    id: "job-12",
-    institution: "Evergreen School",
-    location: "Narayanganj, Bangladesh",
-    role: "Physical Education Coach",
-    summary: "Run fitness sessions, sports teams, and student wellness initiatives.",
-    details: [
-      "Full-time role with sports event management.",
-      "Coaching certification preferred.",
-      "Coordinate inter-school tournaments.",
-    ],
-    initials: "ES",
-  },
-  {
-    id: "job-13",
-    institution: "Horizon College",
-    location: "Bogura, Bangladesh",
-    role: "Business Studies Teacher",
-    summary: "Teach entrepreneurship fundamentals and coordinate enterprise projects.",
-    details: [
-      "Full-time role with project-based assessment focus.",
-      "Experience with business simulations preferred.",
-      "Mentor student enterprise club.",
-    ],
-    initials: "HC",
-  },
-];
+function getInitials(label: string) {
+  const words = label.split(" ").filter(Boolean);
+  if (words.length === 0) {
+    return "IN";
+  }
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
+  return `${words[0][0]}${words[1][0]}`.toUpperCase();
+}
 
 export default function TeacherApply() {
-  const [activePosting, setActivePosting] = useState<JobPosting | null>(null);
+  const [postings, setPostings] = useState<PublicPostingItem[]>([]);
+  const [activePosting, setActivePosting] = useState<PublicPostingItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await listTeacherJobPosts();
+        if (!cancelled) {
+          setPostings(data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load teacher postings");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const hasPostings = useMemo(() => postings.length > 0, [postings.length]);
 
   return (
     <section className="mx-auto w-full max-w-[80%] px-4 py-28 md:px-6">
@@ -203,6 +71,26 @@ export default function TeacherApply() {
         </p>
       </Reveal>
 
+      {loading ? (
+        <p className="mt-10 text-sm text-muted-foreground">Loading teacher postings...</p>
+      ) : null}
+
+      {error ? (
+        <p className="mt-10 text-sm text-destructive">{error}</p>
+      ) : null}
+
+      {!loading && !error && !hasPostings ? (
+        <Reveal className="mt-10 rounded-3xl border border-dashed border-border bg-card/70 p-10 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <SearchX className="h-6 w-6" />
+          </div>
+          <h3 className="mt-4 text-xl font-semibold text-foreground">No Teacher Openings Yet</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Verified institutions have not published teacher jobs yet. Check back soon for new openings.
+          </p>
+        </Reveal>
+      ) : null}
+
       <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {postings.map((posting, index) => (
           <Reveal
@@ -211,21 +99,29 @@ export default function TeacherApply() {
             className="flex h-full flex-col gap-6 rounded-3xl border border-border bg-card p-6 shadow-sm"
           >
             <div className="flex flex-1 items-start gap-4">
-              <div className="flex h-14 w-14 aspect-square items-center justify-center rounded-2xl bg-primary/10 text-lg font-semibold text-primary">
-                {posting.initials}
-              </div>
+              {posting.institutionLogo ? (
+                <img
+                  src={posting.institutionLogo}
+                  alt={`${posting.institution} logo`}
+                  className="h-14 w-14 rounded-2xl border border-border object-cover"
+                />
+              ) : (
+                <div className="flex h-14 w-14 aspect-square items-center justify-center rounded-2xl bg-primary/10 text-lg font-semibold text-primary">
+                  {getInitials(posting.institutionShortName ?? posting.institution)}
+                </div>
+              )}
               <div className="space-y-2">
                 <div>
                   <p className="text-sm font-semibold text-foreground">
                     {posting.institution}
                   </p>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                    {posting.location}
+                    {posting.location ?? "Location not specified"}
                   </p>
                 </div>
                 <div>
                   <p className="text-base font-semibold text-foreground">
-                    {posting.role}
+                    {posting.title}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {posting.summary}
@@ -255,11 +151,10 @@ export default function TeacherApply() {
 
       {activePosting ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8">
-          <div
-            role="dialog"
-            aria-modal="true"
+          <dialog
+            open
             aria-labelledby="job-modal-title"
-            className="w-full max-w-2xl rounded-3xl border border-border bg-card p-6 shadow-2xl"
+            className="fixed left-1/2 top-1/2 m-0 w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-border bg-card p-6 shadow-2xl"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -270,10 +165,10 @@ export default function TeacherApply() {
                   id="job-modal-title"
                   className="mt-2 text-2xl font-semibold text-foreground"
                 >
-                  {activePosting.role}
+                  {activePosting.title}
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {activePosting.location}
+                  {activePosting.location ?? "Location not specified"}
                 </p>
               </div>
               <button
@@ -309,7 +204,7 @@ export default function TeacherApply() {
                 Back to listings
               </button>
             </div>
-          </div>
+          </dialog>
         </div>
       ) : null}
     </section>

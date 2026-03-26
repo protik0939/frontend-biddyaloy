@@ -5,12 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
-  createDepartment,
   createDepartmentAccount,
   getFacultyProfileDetails,
   updateFacultyName,
-  type Department,
 } from "@/services/Faculty/facultyManagement.service";
+import PostingManagementPanel from "@/Components/PostingManagement/PostingManagementPanel";
 
 import { type FacultySection } from "./facultySections";
 
@@ -28,12 +27,6 @@ export default function FacultySectionContent({
   const [savingProfile, setSavingProfile] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
-  const [departmentName, setDepartmentName] = useState("");
-  const [departmentShortName, setDepartmentShortName] = useState("");
-  const [departmentDescription, setDepartmentDescription] = useState("");
-  const [creatingDepartment, setCreatingDepartment] = useState(false);
-  const [createdDepartments, setCreatedDepartments] = useState<Department[]>([]);
-
   const [accountName, setAccountName] = useState("");
   const [accountEmail, setAccountEmail] = useState("");
   const [accountPassword, setAccountPassword] = useState("");
@@ -43,9 +36,6 @@ export default function FacultySectionContent({
   const [creatingAccount, setCreatingAccount] = useState(false);
 
   const canUpdateProfile = profileFullName.trim().length >= 2;
-  const canCreateDepartment = useMemo(() => {
-    return departmentName.trim().length >= 2;
-  }, [departmentName]);
   const canCreateAccount = useMemo(() => {
     return (
       accountName.trim().length >= 2 &&
@@ -125,36 +115,6 @@ export default function FacultySectionContent({
       toast.error(message);
     } finally {
       setSavingProfile(false);
-    }
-  };
-
-  const onCreateDepartment = async (event: { preventDefault: () => void }) => {
-    event.preventDefault();
-
-    if (!canCreateDepartment) {
-      toast.warning("Department name must be at least 2 characters");
-      return;
-    }
-
-    setCreatingDepartment(true);
-    try {
-      const created = await createDepartment({
-        fullName: departmentName.trim(),
-        shortName: departmentShortName.trim() || undefined,
-        description: departmentDescription.trim() || undefined,
-        facultyId: profileFacultyId.trim() || undefined,
-      });
-
-      setCreatedDepartments((prev) => [created, ...prev]);
-      setDepartmentName("");
-      setDepartmentShortName("");
-      setDepartmentDescription("");
-      toast.success("Department created successfully");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to create department";
-      toast.error(message);
-    } finally {
-      setCreatingDepartment(false);
     }
   };
 
@@ -361,7 +321,22 @@ export default function FacultySectionContent({
             </button>
           </form>
         </article>
+
       </div>
+    );
+  }
+
+  if (section === "posts") {
+    return (
+      <article className="rounded-xl border border-border/70 bg-background/70 p-4">
+        <h2 className="text-base font-semibold">Posting Management</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Create teacher job and student admission posts for this faculty.
+        </p>
+        <div className="mt-4">
+          <PostingManagementPanel scope="FACULTY" />
+        </div>
+      </article>
     );
   }
 

@@ -1,13 +1,13 @@
 import { Building2 } from "lucide-react";
 
 import type { InstitutionApplication } from "@/services/Admin/institutionApplication.service";
-import { formatInstitutionType } from "./utils";
+import { formatDateDDMMYYYY, formatInstitutionType } from "./utils";
 
 type Props = {
   applications: InstitutionApplication[];
 };
 
-export default function ApplicationHistory({ applications }: Props) {
+export default function ApplicationHistory({ applications }: Readonly<Props>) {
   return (
     <section className="rounded-xl border border-border/70 bg-background/70 p-4">
       <div className="mb-3 flex items-center gap-2">
@@ -28,7 +28,7 @@ export default function ApplicationHistory({ applications }: Props) {
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {formatInstitutionType(application.institutionType)} - {new Date(application.createdAt).toLocaleString()}
+                {formatInstitutionType(application.institutionType)} - {formatDateDDMMYYYY(application.createdAt)}
               </p>
             </div>
           ))}

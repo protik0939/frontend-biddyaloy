@@ -211,9 +211,13 @@ export default function AdminInstitutionApplicationPanel() {
         <div className="flex justify-between items-center">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-primary">Admin Workflow</p>
-            <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Institution Application</h1>
+            <h1 className="mt-1 text-xl font-semibold sm:text-2xl">
+              {isApproved ? "Institution Dashboard" : "Institution Application"}
+            </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Submit your institution request for superadmin review. Status updates are shown below.
+              {isApproved
+                ? "Manage institution operations from the dashboard below."
+                : "Submit your institution request for superadmin review. Status updates are shown below."}
             </p>
           </div>
           <div className="flex space-x-2">

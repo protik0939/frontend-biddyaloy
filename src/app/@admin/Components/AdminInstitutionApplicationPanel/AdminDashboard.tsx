@@ -1,24 +1,53 @@
 import {
+  Check,
   BookOpenText,
   GraduationCap,
   LayoutDashboard,
   Layers3,
+  Loader2,
+  Megaphone,
   Menu,
+  Pencil,
   Settings2,
   ShieldCheck,
+  Trash2,
   Workflow,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  createInstitutionSemester,
+  deleteInstitutionSemester,
+  listInstitutionSemesters,
+  updateInstitutionSemester,
+} from "@/services/Admin/adminManagement.service";
 import type {
   CreateInstitutionSubAdminPayload,
   InstitutionFacultyOption,
+  InstitutionSemester,
   InstitutionSubAdminAccountType,
 } from "@/services/Admin/adminManagement.service";
 import type { InstitutionApplication, InstitutionType } from "@/services/Admin/institutionApplication.service";
+import PostingManagementPanel from "@/Components/PostingManagement/PostingManagementPanel";
 import SubAdminAccountForm from "./SubAdminAccountForm";
 import type { AdminDashboardSection } from "./types";
-import { formatInstitutionType } from "./utils";
+import { formatDateDDMMYYYY, formatInstitutionType } from "./utils";
+import { toast } from "sonner";
+
+const toDateInputValue = (value: Date) => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const addDays = (value: Date, days: number) => {
+  const next = new Date(value);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+
+const toInputDateFromISO = (value: string) => value.slice(0, 10);
 
 type Props = Readonly<{
   latest: InstitutionApplication;
@@ -38,6 +67,154 @@ export default function AdminDashboard({
   const [activeSection, setActiveSection] = useState<AdminDashboardSection>("overview");
   const [showSidebar, setShowSidebar] = useState(true);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [semesters, setSemesters] = useState<InstitutionSemester[]>([]);
+  const [semesterName, setSemesterName] = useState("");
+  const [semesterStartDate, setSemesterStartDate] = useState("");
+  const [semesterEndDate, setSemesterEndDate] = useState("");
+  const [loadingSemesters, setLoadingSemesters] = useState(false);
+  const [creatingSemester, setCreatingSemester] = useState(false);
+  const [editingSemesterId, setEditingSemesterId] = useState("");
+  const [editSemesterName, setEditSemesterName] = useState("");
+  const [editSemesterStartDate, setEditSemesterStartDate] = useState("");
+  const [editSemesterEndDate, setEditSemesterEndDate] = useState("");
+  const [savingSemesterId, setSavingSemesterId] = useState("");
+  const [deletingSemesterId, setDeletingSemesterId] = useState("");
+
+  const canCreateSemester =
+    semesterName.trim().length >= 2 && Boolean(semesterStartDate) && Boolean(semesterEndDate);
+
+  const minStartDate = useMemo(() => toDateInputValue(addDays(new Date(), 1)), []);
+  const minEndDate = semesterStartDate
+    ? toDateInputValue(addDays(new Date(semesterStartDate), 1))
+    : minStartDate;
+  const minEditStartDate = minStartDate;
+  const minEditEndDate = editSemesterStartDate
+    ? toDateInputValue(addDays(new Date(editSemesterStartDate), 1))
+    : minEditStartDate;
+
+  const reloadSemesters = async () => {
+    setLoadingSemesters(true);
+    try {
+      const data = await listInstitutionSemesters();
+      setSemesters(data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load semesters";
+      toast.error(message);
+    } finally {
+      setLoadingSemesters(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection === "workflow") {
+      void reloadSemesters();
+    }
+  }, [activeSection]);
+
+  const onCreateSemester = async (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+
+    if (!canCreateSemester) {
+      toast.warning("Provide semester name, start date and end date");
+      return;
+    }
+
+    if (semesterStartDate <= toDateInputValue(new Date())) {
+      toast.warning("Start date must be after today");
+      return;
+    }
+
+    if (semesterEndDate <= semesterStartDate) {
+      toast.warning("End date must be later than start date");
+      return;
+    }
+
+    setCreatingSemester(true);
+    try {
+      await createInstitutionSemester({
+        name: semesterName.trim(),
+        startDate: new Date(semesterStartDate).toISOString(),
+        endDate: new Date(semesterEndDate).toISOString(),
+      });
+
+      setSemesterName("");
+      setSemesterStartDate("");
+      setSemesterEndDate("");
+      await reloadSemesters();
+      toast.success("Semester created successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to create semester";
+      toast.error(message);
+    } finally {
+      setCreatingSemester(false);
+    }
+  };
+
+  const onStartEditSemester = (semester: InstitutionSemester) => {
+    setEditingSemesterId(semester.id);
+    setEditSemesterName(semester.name);
+    setEditSemesterStartDate(toInputDateFromISO(semester.startDate));
+    setEditSemesterEndDate(toInputDateFromISO(semester.endDate));
+  };
+
+  const onCancelEditSemester = () => {
+    setEditingSemesterId("");
+    setEditSemesterName("");
+    setEditSemesterStartDate("");
+    setEditSemesterEndDate("");
+  };
+
+  const onSaveSemester = async (semesterId: string) => {
+    if (editSemesterName.trim().length < 2 || !editSemesterStartDate || !editSemesterEndDate) {
+      toast.warning("Provide semester name, start date and end date");
+      return;
+    }
+
+    if (editSemesterStartDate <= toDateInputValue(new Date())) {
+      toast.warning("Start date must be after today");
+      return;
+    }
+
+    if (editSemesterEndDate <= editSemesterStartDate) {
+      toast.warning("End date must be later than start date");
+      return;
+    }
+
+    setSavingSemesterId(semesterId);
+    try {
+      await updateInstitutionSemester(semesterId, {
+        name: editSemesterName.trim(),
+        startDate: new Date(editSemesterStartDate).toISOString(),
+        endDate: new Date(editSemesterEndDate).toISOString(),
+      });
+
+      onCancelEditSemester();
+      await reloadSemesters();
+      toast.success("Semester updated successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update semester";
+      toast.error(message);
+    } finally {
+      setSavingSemesterId("");
+    }
+  };
+
+  const onDeleteSemester = async (semesterId: string) => {
+    setDeletingSemesterId(semesterId);
+    try {
+      await deleteInstitutionSemester(semesterId);
+      if (editingSemesterId === semesterId) {
+        onCancelEditSemester();
+      }
+      await reloadSemesters();
+      toast.success("Semester deleted successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete semester";
+      toast.error(message);
+    } finally {
+      setDeletingSemesterId("");
+    }
+  };
 
   const actionCards = useMemo(
     () => [
@@ -90,6 +267,7 @@ export default function AdminDashboard({
         icon: Layers3,
         enabled: approvedInstitutionType === "UNIVERSITY",
       },
+      { key: "posts", label: "Posts", icon: Megaphone, enabled: true },
       { key: "settings", label: "Settings", icon: Settings2, enabled: true },
     ];
 
@@ -220,7 +398,7 @@ export default function AdminDashboard({
                 </div>
                 <div className="rounded-xl border border-border/70 bg-background/70 p-4">
                   <p className="text-xs text-muted-foreground">Created At</p>
-                  <p className="mt-1 font-semibold">{new Date(latest.createdAt).toLocaleDateString()}</p>
+                  <p className="mt-1 font-semibold">{formatDateDDMMYYYY(latest.createdAt)}</p>
                 </div>
               </div>
 
@@ -271,17 +449,164 @@ export default function AdminDashboard({
           )}
 
           {activeSection === "workflow" && (
-            <div className="rounded-xl border border-border/70 bg-background/70 p-4">
-              <h3 className="text-base font-semibold">Academic Workflow</h3>
+            <article className="space-y-4 rounded-xl border border-border/70 bg-background/70 p-4">
+              <h3 className="text-base font-semibold">Semester Management</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Configure semesters, sections, and scheduling workflow from this module.
+                Create and review institution-level semesters.
               </p>
-            </div>
+
+              <form className="grid grid-cols-1 gap-3 md:grid-cols-4" onSubmit={onCreateSemester}>
+                <label className="block space-y-1 text-sm">
+                  <span className="font-medium">Semester Name</span>
+                  <input
+                    value={semesterName}
+                    onChange={(event) => setSemesterName(event.target.value)}
+                    placeholder="Semester name"
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  />
+                </label>
+
+                <label className="block space-y-1 text-sm">
+                  <span className="font-medium">Start Date</span>
+                  <input
+                    type="date"
+                    value={semesterStartDate}
+                    onChange={(event) => setSemesterStartDate(event.target.value)}
+                    min={minStartDate}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  />
+                </label>
+
+                <label className="block space-y-1 text-sm">
+                  <span className="font-medium">End Date</span>
+                  <input
+                    type="date"
+                    value={semesterEndDate}
+                    onChange={(event) => setSemesterEndDate(event.target.value)}
+                    min={minEndDate}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={creatingSemester || !canCreateSemester}
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60 md:mt-6"
+                >
+                  {creatingSemester ? "Creating..." : "Create Semester"}
+                </button>
+              </form>
+
+              {loadingSemesters ? (
+                <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading semesters...
+                </div>
+              ) : null}
+
+              <div className="space-y-2">
+                {semesters.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-lg border border-border/70 bg-background/80 px-3 py-2 text-sm"
+                  >
+                    {editingSemesterId === item.id ? (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                          <input
+                            value={editSemesterName}
+                            onChange={(event) => setEditSemesterName(event.target.value)}
+                            className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                          />
+                          <input
+                            type="date"
+                            value={editSemesterStartDate}
+                            onChange={(event) => setEditSemesterStartDate(event.target.value)}
+                            min={minEditStartDate}
+                            className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                          />
+                          <input
+                            type="date"
+                            value={editSemesterEndDate}
+                            onChange={(event) => setEditSemesterEndDate(event.target.value)}
+                            min={minEditEndDate}
+                            className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void onSaveSemester(item.id)}
+                            disabled={savingSemesterId === item.id}
+                            className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                            {savingSemesterId === item.id ? "Saving..." : "Save"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={onCancelEditSemester}
+                            className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium">{item.name}</p>
+                          <p className="text-muted-foreground">
+                            {formatDateDDMMYYYY(item.startDate)} - {formatDateDDMMYYYY(item.endDate)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => onStartEditSemester(item)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void onDeleteSemester(item.id)}
+                            disabled={deletingSemesterId === item.id}
+                            className="inline-flex items-center gap-1 rounded-lg border border-rose-300 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 disabled:opacity-60"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {deletingSemesterId === item.id ? "Deleting..." : "Delete"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {!loadingSemesters && semesters.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No semesters created yet.</p>
+                ) : null}
+              </div>
+            </article>
           )}
 
           {activeSection === "faculty" && renderAccountSection("FACULTY")}
 
           {activeSection === "departments" && renderAccountSection("DEPARTMENT")}
+
+          {activeSection === "posts" && (
+            <div className="rounded-xl border border-border/70 bg-background/70 p-4">
+              <h3 className="text-base font-semibold">Posting Management</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Create teacher job and student admission posts for public listing.
+              </p>
+              <div className="mt-4">
+                <PostingManagementPanel scope="INSTITUTION" />
+              </div>
+            </div>
+          )}
 
           {activeSection === "settings" && (
             <div className="rounded-xl border border-border/70 bg-background/70 p-4">

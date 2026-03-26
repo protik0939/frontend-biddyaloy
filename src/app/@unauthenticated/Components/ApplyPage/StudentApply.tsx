@@ -1,140 +1,60 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { SearchX } from "lucide-react";
 import Reveal from "@/app/@unauthenticated/Components/HomePage/Sections/Reveal";
+import {
+  listStudentAdmissionPosts,
+  type PublicPostingItem,
+} from "@/services/Public/publicPosting.service";
 
-type StudentProgram = {
-  id: string;
-  institution: string;
-  location: string;
-  program: string;
-  summary: string;
-  details: string[];
-  initials: string;
-};
-
-const programs: StudentProgram[] = [
-  {
-    id: "program-1",
-    institution: "Biddyaloy Academy",
-    location: "Dhaka, Bangladesh",
-    program: "STEM Scholars (Grade 9-10)",
-    summary: "Project-based STEM track with lab sessions and mentorship.",
-    details: [
-      "Weekly lab rotations and mentorship hours.",
-      "Scholarship opportunities for top performers.",
-      "Entrance test and interview required.",
-    ],
-    initials: "BA",
-  },
-  {
-    id: "program-2",
-    institution: "Greenfield International",
-    location: "Chattogram, Bangladesh",
-    program: "Business & Leadership (Grade 11-12)",
-    summary: "Business fundamentals with leadership workshops and case studies.",
-    details: [
-      "Capstone project with local businesses.",
-      "Leadership bootcamp each semester.",
-      "Portfolio-based assessment.",
-    ],
-    initials: "GI",
-  },
-  {
-    id: "program-3",
-    institution: "Nova City School",
-    location: "Sylhet, Bangladesh",
-    program: "Language Arts Honors (Grade 6-8)",
-    summary: "Advanced reading, writing, and speaking track.",
-    details: [
-      "Monthly writing workshops with guest mentors.",
-      "Public speaking showcase each term.",
-      "Reading list with guided discussions.",
-    ],
-    initials: "NS",
-  },
-  {
-    id: "program-4",
-    institution: "Riverstone College",
-    location: "Rajshahi, Bangladesh",
-    program: "Science Foundation (Grade 7-9)",
-    summary: "Hands-on science exploration with guided lab work.",
-    details: [
-      "Weekly lab sessions and science journal reviews.",
-      "Term-end science fair showcase.",
-      "Mentoring from senior faculty.",
-    ],
-    initials: "RC",
-  },
-  {
-    id: "program-5",
-    institution: "Lakeview High",
-    location: "Khulna, Bangladesh",
-    program: "Humanities Track (Grade 9-10)",
-    summary: "Focus on history, civics, and debate-focused learning.",
-    details: [
-      "Weekly debate club participation.",
-      "Civic engagement project each term.",
-      "Research-based assessments.",
-    ],
-    initials: "LH",
-  },
-  {
-    id: "program-6",
-    institution: "Aurora International School",
-    location: "Gazipur, Bangladesh",
-    program: "Primary Explorers (Grade 1-3)",
-    summary: "Inquiry-led primary program with creative learning routines.",
-    details: [
-      "Daily guided exploration sessions.",
-      "Parent engagement every month.",
-      "Foundational literacy and numeracy focus.",
-    ],
-    initials: "AI",
-  },
-  {
-    id: "program-7",
-    institution: "Summit Preparatory",
-    location: "Mymensingh, Bangladesh",
-    program: "Lab Science (Grade 10-12)",
-    summary: "Advanced lab science program with college preparation.",
-    details: [
-      "Lab safety certification included.",
-      "Weekly mentorship sessions with advisors.",
-      "Entrance exam required for admission.",
-    ],
-    initials: "SP",
-  },
-  {
-    id: "program-8",
-    institution: "Brighton Academy",
-    location: "Comilla, Bangladesh",
-    program: "Early Learners (Pre-Primary)",
-    summary: "Play-based learning with structured routines and care.",
-    details: [
-      "Montessori-style activity stations.",
-      "Weekly family updates and feedback.",
-      "Health and safety monitoring daily.",
-    ],
-    initials: "BA",
-  },
-  {
-    id: "program-9",
-    institution: "Harborview School",
-    location: "Rangpur, Bangladesh",
-    program: "Commerce Plus (Grade 11-12)",
-    summary: "Commerce track with accounting labs and market simulations.",
-    details: [
-      "Accounting labs twice per week.",
-      "Business club and enterprise project.",
-      "Mock exam preparation sessions.",
-    ],
-    initials: "HS",
-  },
-];
+function getInitials(label: string) {
+  const words = label.split(" ").filter(Boolean);
+  if (words.length === 0) {
+    return "IN";
+  }
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
+  return `${words[0][0]}${words[1][0]}`.toUpperCase();
+}
 
 export default function StudentApply() {
-  const [activeProgram, setActiveProgram] = useState<StudentProgram | null>(null);
+  const [programs, setPrograms] = useState<PublicPostingItem[]>([]);
+  const [activeProgram, setActiveProgram] = useState<PublicPostingItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await listStudentAdmissionPosts();
+        if (!cancelled) {
+          setPrograms(data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load student admissions");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const hasPrograms = useMemo(() => programs.length > 0, [programs.length]);
 
   return (
     <section className="mx-auto w-full max-w-[80%] px-4 py-28 md:px-6">
@@ -151,6 +71,26 @@ export default function StudentApply() {
         </p>
       </Reveal>
 
+      {loading ? (
+        <p className="mt-10 text-sm text-muted-foreground">Loading admission posts...</p>
+      ) : null}
+
+      {error ? (
+        <p className="mt-10 text-sm text-destructive">{error}</p>
+      ) : null}
+
+      {!loading && !error && !hasPrograms ? (
+        <Reveal className="mt-10 rounded-3xl border border-dashed border-border bg-card/70 p-10 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <SearchX className="h-6 w-6" />
+          </div>
+          <h3 className="mt-4 text-xl font-semibold text-foreground">No Admission Posts Yet</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Institutions have not published student admission announcements yet. Please check again later.
+          </p>
+        </Reveal>
+      ) : null}
+
       <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {programs.map((program, index) => (
           <Reveal
@@ -159,21 +99,29 @@ export default function StudentApply() {
             className="flex h-full flex-col gap-6 rounded-3xl border border-border bg-card p-6 shadow-sm"
           >
             <div className="flex flex-1 items-start gap-4">
-              <div className="flex h-14 w-14 aspect-square items-center justify-center rounded-2xl bg-primary/10 text-lg font-semibold text-primary">
-                {program.initials}
-              </div>
+              {program.institutionLogo ? (
+                <img
+                  src={program.institutionLogo}
+                  alt={`${program.institution} logo`}
+                  className="h-14 w-14 rounded-2xl border border-border object-cover"
+                />
+              ) : (
+                <div className="flex h-14 w-14 aspect-square items-center justify-center rounded-2xl bg-primary/10 text-lg font-semibold text-primary">
+                  {getInitials(program.institutionShortName ?? program.institution)}
+                </div>
+              )}
               <div className="space-y-2">
                 <div>
                   <p className="text-sm font-semibold text-foreground">
                     {program.institution}
                   </p>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                    {program.location}
+                    {program.location ?? "Location not specified"}
                   </p>
                 </div>
                 <div>
                   <p className="text-base font-semibold text-foreground">
-                    {program.program}
+                    {program.title}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {program.summary}
@@ -203,11 +151,10 @@ export default function StudentApply() {
 
       {activeProgram ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8">
-          <div
-            role="dialog"
-            aria-modal="true"
+          <dialog
+            open
             aria-labelledby="program-modal-title"
-            className="w-full max-w-2xl rounded-3xl border border-border bg-card p-6 shadow-2xl"
+            className="fixed left-1/2 top-1/2 m-0 w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-border bg-card p-6 shadow-2xl"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -218,10 +165,10 @@ export default function StudentApply() {
                   id="program-modal-title"
                   className="mt-2 text-2xl font-semibold text-foreground"
                 >
-                  {activeProgram.program}
+                  {activeProgram.title}
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {activeProgram.location}
+                  {activeProgram.location ?? "Location not specified"}
                 </p>
               </div>
               <button
@@ -257,7 +204,7 @@ export default function StudentApply() {
                 Back to listings
               </button>
             </div>
-          </div>
+          </dialog>
         </div>
       ) : null}
     </section>

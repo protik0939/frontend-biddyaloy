@@ -27,3 +27,11 @@ export function formatInstitutionType(type: InstitutionType) {
     .map((entry) => `${entry.charAt(0)}${entry.slice(1).toLowerCase()}`)
     .join(" ");
 }
+
+export function formatDateDDMMYYYY(value: string | Date) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(value));
+}

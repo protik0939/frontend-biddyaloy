@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, UserPlus2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -29,7 +29,7 @@ export default function FacultySectionContent({
   const [loadingProfile, setLoadingProfile] = useState(false);
 
   const [departmentName, setDepartmentName] = useState("");
-  const [departmentCode, setDepartmentCode] = useState("");
+  const [departmentShortName, setDepartmentShortName] = useState("");
   const [departmentDescription, setDepartmentDescription] = useState("");
   const [creatingDepartment, setCreatingDepartment] = useState(false);
   const [createdDepartments, setCreatedDepartments] = useState<Department[]>([]);
@@ -37,6 +37,9 @@ export default function FacultySectionContent({
   const [accountName, setAccountName] = useState("");
   const [accountEmail, setAccountEmail] = useState("");
   const [accountPassword, setAccountPassword] = useState("");
+  const [accountDepartmentFullName, setAccountDepartmentFullName] = useState("");
+  const [accountDepartmentShortName, setAccountDepartmentShortName] = useState("");
+  const [accountDepartmentDescription, setAccountDepartmentDescription] = useState("");
   const [creatingAccount, setCreatingAccount] = useState(false);
 
   const canUpdateProfile = profileFullName.trim().length >= 2;
@@ -47,12 +50,22 @@ export default function FacultySectionContent({
     return (
       accountName.trim().length >= 2 &&
       accountEmail.trim().includes("@") &&
-      accountPassword.trim().length >= 6
+      accountPassword.trim().length >= 8 &&
+      accountDepartmentFullName.trim().length >= 2
     );
-  }, [accountEmail, accountName, accountPassword]);
+  }, [
+    accountDepartmentFullName,
+    accountEmail,
+    accountName,
+    accountPassword,
+  ]);
 
   useEffect(() => {
-    if (section !== "profile") {
+    if (
+      section !== "profile" &&
+      section !== "departments" &&
+      section !== "departmentAccounts"
+    ) {
       return;
     }
 
@@ -126,14 +139,15 @@ export default function FacultySectionContent({
     setCreatingDepartment(true);
     try {
       const created = await createDepartment({
-        name: departmentName.trim(),
-        code: departmentCode.trim() || undefined,
+        fullName: departmentName.trim(),
+        shortName: departmentShortName.trim() || undefined,
         description: departmentDescription.trim() || undefined,
+        facultyId: profileFacultyId.trim() || undefined,
       });
 
       setCreatedDepartments((prev) => [created, ...prev]);
       setDepartmentName("");
-      setDepartmentCode("");
+      setDepartmentShortName("");
       setDepartmentDescription("");
       toast.success("Department created successfully");
     } catch (error) {
@@ -158,11 +172,18 @@ export default function FacultySectionContent({
         name: accountName.trim(),
         email: accountEmail.trim(),
         password: accountPassword,
+        facultyId: profileFacultyId.trim() || undefined,
+        departmentFullName: accountDepartmentFullName.trim(),
+        departmentShortName: accountDepartmentShortName.trim() || undefined,
+        departmentDescription: accountDepartmentDescription.trim() || undefined,
       });
 
       setAccountName("");
       setAccountEmail("");
       setAccountPassword("");
+      setAccountDepartmentFullName("");
+      setAccountDepartmentShortName("");
+      setAccountDepartmentDescription("");
       toast.success(`Department account created for ${created.email}`);
     } catch (error) {
       const message =
@@ -179,13 +200,13 @@ export default function FacultySectionContent({
 
   if (section === "profile") {
     return (
-      <article className="rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
-        <h2 className="text-lg font-semibold">Edit Faculty Profile</h2>
+      <article className="rounded-xl border border-border/70 bg-background/70 p-4">
+        <h2 className="text-base font-semibold">Edit Faculty Profile</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Update faculty full name, short name, description, and optional faculty id.
         </p>
 
-        <form className="mt-4 space-y-4" onSubmit={onUpdateProfile}>
+        <form className="mt-4 space-y-3" onSubmit={onUpdateProfile}>
           {loadingProfile ? (
             <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -194,51 +215,45 @@ export default function FacultySectionContent({
           ) : null}
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="faculty-full-name">
-                Full Name
-              </label>
+            <label className="block space-y-1 text-sm" htmlFor="faculty-full-name">
+              <span className="font-medium">Full Name</span>
               <input
                 id="faculty-full-name"
                 value={profileFullName}
                 onChange={(event) => setProfileFullName(event.target.value)}
                 placeholder="Faculty of Science"
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
               />
-            </div>
+            </label>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="faculty-short-name">
-                Short Name (optional)
-              </label>
+            <label className="block space-y-1 text-sm" htmlFor="faculty-short-name">
+              <span className="font-medium">Short Name (optional)</span>
               <input
                 id="faculty-short-name"
                 value={profileShortName}
                 onChange={(event) => setProfileShortName(event.target.value)}
                 placeholder="FOS"
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
               />
-            </div>
+            </label>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="faculty-description">
-              Description (optional)
-            </label>
+          <label className="block space-y-1 text-sm" htmlFor="faculty-description">
+            <span className="font-medium">Description (optional)</span>
             <textarea
               id="faculty-description"
               value={profileDescription}
               onChange={(event) => setProfileDescription(event.target.value)}
               rows={4}
               placeholder="Brief summary of this faculty"
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
             />
-          </div>
+          </label>
 
           <button
             type="submit"
             disabled={savingProfile}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
           >
             {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save Changes
@@ -248,150 +263,107 @@ export default function FacultySectionContent({
     );
   }
 
-  if (section === "departments") {
+  if (section === "departments" || section === "departmentAccounts") {
     return (
-      <article className="space-y-4 rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
-        <div>
-          <h2 className="text-lg font-semibold">Create Department</h2>
+      <div className="space-y-4">
+
+        <article className="rounded-xl border border-border/70 bg-background/70 p-4">
+          <h2 className="text-base font-semibold">Create Department and Account</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Add a new department under this faculty.
+            Generate login credentials for a department admin account and create the department.
           </p>
-        </div>
 
-        <form className="space-y-4" onSubmit={onCreateDepartment}>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="department-name">
-                Department Name
+          <form className="mt-4 space-y-3" onSubmit={onCreateDepartmentAccount}>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="block space-y-1 text-sm" htmlFor="department-account-name">
+                <span className="font-medium">Full Name</span>
+                <input
+                  id="department-account-name"
+                  value={accountName}
+                  onChange={(event) => setAccountName(event.target.value)}
+                  placeholder="Department Admin"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                />
               </label>
-              <input
-                id="department-name"
-                value={departmentName}
-                onChange={(event) => setDepartmentName(event.target.value)}
-                placeholder="Computer Science"
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
-              />
+
+              <label className="block space-y-1 text-sm" htmlFor="department-account-email">
+                <span className="font-medium">Email</span>
+                <input
+                  id="department-account-email"
+                  type="email"
+                  value={accountEmail}
+                  onChange={(event) => setAccountEmail(event.target.value)}
+                  placeholder="department.admin@example.com"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                />
+              </label>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="department-code">
-                Code (optional)
-              </label>
+            <label className="block space-y-1 text-sm" htmlFor="department-account-password">
+              <span className="font-medium">Temporary Password</span>
               <input
-                id="department-code"
-                value={departmentCode}
-                onChange={(event) => setDepartmentCode(event.target.value)}
-                placeholder="CSE"
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+                id="department-account-password"
+                type="password"
+                value={accountPassword}
+                onChange={(event) => setAccountPassword(event.target.value)}
+                placeholder="Minimum 8 characters"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
               />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="department-description">
-              Description (optional)
             </label>
-            <textarea
-              id="department-description"
-              value={departmentDescription}
-              onChange={(event) => setDepartmentDescription(event.target.value)}
-              rows={4}
-              placeholder="Describe the department..."
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
-            />
-          </div>
 
-          <button
-            type="submit"
-            disabled={creatingDepartment}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {creatingDepartment ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Create Department
-          </button>
-        </form>
+            <div className="rounded-lg border border-border/70 bg-muted/20 p-3 space-y-3">
+              <p className="text-sm font-semibold">Department Details</p>
 
-        {createdDepartments.length > 0 ? (
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold">Recently Created</h3>
-            {createdDepartments.map((department) => (
-              <div
-                key={department.id}
-                className="rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-sm"
-              >
-                <p className="font-medium">{department.name}</p>
-                <p className="text-muted-foreground">
-                  {department.code ? `${department.code} | ` : ""}
-                  {department.description ?? "No description"}
-                </p>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label className="block space-y-1 text-sm" htmlFor="department-account-department-name">
+                  <span className="font-medium">Department Full Name</span>
+                <input
+                  id="department-account-department-name"
+                  value={accountDepartmentFullName}
+                  onChange={(event) => setAccountDepartmentFullName(event.target.value)}
+                  placeholder="Department of Computer Science"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                />
+                </label>
+
+                <label className="block space-y-1 text-sm" htmlFor="department-account-department-short-name">
+                  <span className="font-medium">Department Short Name (optional)</span>
+                <input
+                  id="department-account-department-short-name"
+                  value={accountDepartmentShortName}
+                  onChange={(event) => setAccountDepartmentShortName(event.target.value)}
+                  placeholder="CSE"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                />
+                </label>
               </div>
-            ))}
-          </div>
-        ) : null}
-      </article>
+
+              <label className="block space-y-1 text-sm" htmlFor="department-account-department-description">
+                <span className="font-medium">Department Description (optional)</span>
+              <textarea
+                id="department-account-department-description"
+                value={accountDepartmentDescription}
+                onChange={(event) => setAccountDepartmentDescription(event.target.value)}
+                rows={3}
+                placeholder="Brief department description"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+              />
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              disabled={creatingAccount}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {creatingAccount ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus2 className="h-4 w-4" />}
+              Create Department Account
+            </button>
+          </form>
+        </article>
+      </div>
     );
   }
 
-  return (
-    <article className="rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
-      <h2 className="text-lg font-semibold">Create Department Account</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Generate login credentials for a department admin account.
-      </p>
-
-      <form className="mt-4 space-y-4" onSubmit={onCreateDepartmentAccount}>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="department-account-name">
-              Full Name
-            </label>
-            <input
-              id="department-account-name"
-              value={accountName}
-              onChange={(event) => setAccountName(event.target.value)}
-              placeholder="Department Admin"
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="department-account-email">
-              Email
-            </label>
-            <input
-              id="department-account-email"
-              type="email"
-              value={accountEmail}
-              onChange={(event) => setAccountEmail(event.target.value)}
-              placeholder="department.admin@example.com"
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium" htmlFor="department-account-password">
-            Temporary Password
-          </label>
-          <input
-            id="department-account-password"
-            type="password"
-            value={accountPassword}
-            onChange={(event) => setAccountPassword(event.target.value)}
-            placeholder="Minimum 6 characters"
-            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={creatingAccount}
-          className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {creatingAccount ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Create Department Account
-        </button>
-      </form>
-    </article>
-  );
+  return null;
 }

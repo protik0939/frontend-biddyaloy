@@ -16,10 +16,11 @@ export interface FacultyProfileDetails {
 
 export interface Department {
   id: string;
-  name: string;
-  code?: string | null;
-  description?: string | null;
-  createdAt?: string;
+  fullName: string;
+  shortName: string | null;
+  description: string | null;
+  facultyId: string | null;
+  createdAt: string;
 }
 
 export interface DepartmentAccount {
@@ -38,15 +39,20 @@ export interface UpdateFacultyNamePayload {
 }
 
 export interface CreateDepartmentPayload {
-  name: string;
-  code?: string;
+  fullName: string;
+  shortName?: string;
   description?: string;
+  facultyId?: string;
 }
 
 export interface CreateDepartmentAccountPayload {
   name: string;
   email: string;
   password: string;
+  facultyId?: string;
+  departmentFullName?: string;
+  departmentShortName?: string;
+  departmentDescription?: string;
 }
 
 type ApiSuccess<T> = {
@@ -175,18 +181,13 @@ export async function getFacultyProfileDetails() {
 }
 
 export async function createDepartment(payload: CreateDepartmentPayload) {
-  const endpoints = [
-    getApiPath("/api/v1/departments"),
-    getApiPath("/api/v1/faculty/departments"),
-    getApiPath("/api/v1/department/create"),
-  ];
-
   return tryPostWithFallback<Department>(
-    endpoints,
+    [getApiPath("/api/v1/faculty/departments")],
     {
-      name: payload.name,
-      code: payload.code || undefined,
+      fullName: payload.fullName,
+      shortName: payload.shortName || undefined,
       description: payload.description || undefined,
+      facultyId: payload.facultyId || undefined,
     },
     "Failed to create department",
   );
@@ -200,6 +201,10 @@ export async function createDepartmentAccount(payload: CreateDepartmentAccountPa
       email: payload.email,
       password: payload.password,
       accountType: "DEPARTMENT",
+      facultyId: payload.facultyId || undefined,
+      departmentFullName: payload.departmentFullName || undefined,
+      departmentShortName: payload.departmentShortName || undefined,
+      departmentDescription: payload.departmentDescription || undefined,
     },
     "Failed to create department account",
   );

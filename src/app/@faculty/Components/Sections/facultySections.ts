@@ -1,7 +1,6 @@
 import {
   Building2,
   Home,
-  KeySquare,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -27,11 +26,5 @@ export const facultySidebarItems: FacultySidebarItem[] = [
     href: "/departments",
     section: "departments",
     Icon: Building2,
-  },
-  {
-    label: "Department Accounts",
-    href: "/department-accounts",
-    section: "departmentAccounts",
-    Icon: KeySquare,
   },
 ];

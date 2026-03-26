@@ -5,12 +5,12 @@ import Image from "next/image";
 export default function TopBanner() {
     return (
         <section id="home" className="relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 -z-0 flex items-center justify-center">
+            <div className="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center">
                 <Image
                     src="/logo/BidyaloylogoIconOnly.svg"
                     alt=""
                     aria-hidden="true"
-                    className="watermark-float w-[420px] opacity-[0.08] md:w-[520px]"
+                    className="watermark-float w-105 opacity-[0.08] md:w-130 h-auto"
                     width={520}
                     height={300}
                 />

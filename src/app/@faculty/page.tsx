@@ -1,5 +1,5 @@
-import FacultyHome from '@/Components/HomePage/FacultyHome';
+import FacultyDashboard from "@/app/@faculty/Components/Homepage/FacultyDashboard";
 
 export default function FacultyPage() {
-  return <FacultyHome />;
+  return <FacultyDashboard section="overview" />;
 }

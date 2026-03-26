@@ -14,7 +14,7 @@ export default function RoleRouter() {
 
   switch (userRole) {
     case 'SUPERADMIN':
-      return <SuperAdminHome />;
+      return <SuperAdminHome section="overview" />;
     case 'ADMIN':
       return <AdminHome />;
     case 'FACULTY':

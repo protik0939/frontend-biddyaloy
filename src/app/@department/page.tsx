@@ -1,5 +1,5 @@
-import DepartmentHome from '@/Components/HomePage/DepartmentHome';
+import DepartmentDashboard from "@/app/@department/Components/Homepage/DepartmentDashboard";
 
 export default function DepartmentPage() {
-  return <DepartmentHome />;
+  return <DepartmentDashboard section="overview" />;
 }

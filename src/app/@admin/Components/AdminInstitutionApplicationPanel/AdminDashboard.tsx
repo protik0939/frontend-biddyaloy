@@ -10,10 +10,9 @@ import {
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-
-import ThemeToggle from "@/Components/ThemeToggle";
 import type {
   CreateInstitutionSubAdminPayload,
+  InstitutionFacultyOption,
   InstitutionSubAdminAccountType,
 } from "@/services/Admin/adminManagement.service";
 import type { InstitutionApplication, InstitutionType } from "@/services/Admin/institutionApplication.service";
@@ -25,9 +24,17 @@ type Props = Readonly<{
   latest: InstitutionApplication;
   approvedInstitutionType?: InstitutionType;
   onCreateSubAdmin: (payload: CreateInstitutionSubAdminPayload) => Promise<void>;
+  faculties: InstitutionFacultyOption[];
+  facultiesLoading: boolean;
 }>;
 
-export default function AdminDashboard({ latest, approvedInstitutionType, onCreateSubAdmin }: Props) {
+export default function AdminDashboard({
+  latest,
+  approvedInstitutionType,
+  onCreateSubAdmin,
+  faculties,
+  facultiesLoading,
+}: Props) {
   const [activeSection, setActiveSection] = useState<AdminDashboardSection>("overview");
   const [showSidebar, setShowSidebar] = useState(true);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
@@ -68,23 +75,23 @@ export default function AdminDashboard({ latest, approvedInstitutionType, onCrea
     icon: React.ComponentType<{ className?: string }>;
     enabled: boolean;
   }[] = [
-    { key: "overview", label: "Overview", icon: LayoutDashboard, enabled: true },
-    { key: "programs", label: "Programs", icon: BookOpenText, enabled: true },
-    { key: "workflow", label: "Academic Workflow", icon: Workflow, enabled: true },
-    {
-      key: "faculty",
-      label: "Faculties",
-      icon: GraduationCap,
-      enabled: approvedInstitutionType === "UNIVERSITY",
-    },
-    {
-      key: "departments",
-      label: "Departments",
-      icon: Layers3,
-      enabled: approvedInstitutionType === "UNIVERSITY",
-    },
-    { key: "settings", label: "Settings", icon: Settings2, enabled: true },
-  ];
+      { key: "overview", label: "Overview", icon: LayoutDashboard, enabled: true },
+      { key: "programs", label: "Programs", icon: BookOpenText, enabled: true },
+      { key: "workflow", label: "Academic Workflow", icon: Workflow, enabled: true },
+      {
+        key: "faculty",
+        label: "Faculties",
+        icon: GraduationCap,
+        enabled: approvedInstitutionType === "UNIVERSITY",
+      },
+      {
+        key: "departments",
+        label: "Departments",
+        icon: Layers3,
+        enabled: approvedInstitutionType === "UNIVERSITY",
+      },
+      { key: "settings", label: "Settings", icon: Settings2, enabled: true },
+    ];
 
   const renderAccountSection = (accountType: InstitutionSubAdminAccountType) => {
     const isFaculty = accountType === "FACULTY";
@@ -96,10 +103,12 @@ export default function AdminDashboard({ latest, approvedInstitutionType, onCrea
         title={isFaculty ? "Create Faculty Admin Account" : "Create Department Admin Account"}
         description={
           isFaculty
-            ? "Use this form to hire a faculty admin and issue login credentials."
-            : "Use this form to hire a department admin and issue login credentials."
+            ? "Create faculty admin credentials and set up faculty details in one step."
+            : "Create department admin credentials, then create faculty and department in one step."
         }
         onSubmit={onCreateSubAdmin}
+        facultyOptions={faculties}
+        facultyOptionsLoading={facultiesLoading}
       />
     );
   };
@@ -120,9 +129,9 @@ export default function AdminDashboard({ latest, approvedInstitutionType, onCrea
         <div className="absolute bottom-0 right-0 h-44 w-44 rounded-full bg-accent/20 blur-3xl" />
       </div>
 
-      <div className="relative flex min-h-135">
+      <div className="relative flex">
         <aside
-          className={`absolute left-0 top-0 z-30 h-full border-r border-border/70 bg-card/95 p-3 shadow-md transition-all duration-300 md:static md:translate-x-0 ${showMobileSidebar ? "translate-x-0" : "-translate-x-full"} ${showSidebar ? "w-64" : "w-16"}`}
+          className={`absolute left-0 top-0 z-30 h-auto border-r border-border/70 bg-card/95 p-3 shadow-md transition-all duration-300 md:static md:translate-x-0 ${showMobileSidebar ? "translate-x-0" : "-translate-x-full"} ${showSidebar ? "w-64" : "w-16"}`}
         >
           <div className={`mb-3 flex items-center ${showSidebar ? "justify-between" : "justify-center"}`}>
             <span
@@ -162,7 +171,7 @@ export default function AdminDashboard({ latest, approvedInstitutionType, onCrea
                     setActiveSection(item.key);
                     setShowMobileSidebar(false);
                   }}
-                  className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition ${isActive
+                  className={`flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition ${isActive
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     } disabled:cursor-not-allowed disabled:opacity-45`}
@@ -193,7 +202,6 @@ export default function AdminDashboard({ latest, approvedInstitutionType, onCrea
               <div className="rounded-lg border border-border/70 bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground">
                 {formatInstitutionType(latest.institutionType)}
               </div>
-              <ThemeToggle />
             </div>
           </header>
 

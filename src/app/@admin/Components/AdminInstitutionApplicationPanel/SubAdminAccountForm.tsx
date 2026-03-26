@@ -1,13 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, UserPlus2 } from "lucide-react";
 
 import type {
   CreateInstitutionSubAdminPayload,
+  InstitutionFacultyOption,
   InstitutionSubAdminAccountType,
 } from "@/services/Admin/adminManagement.service";
 
 type Props = Readonly<{
   accountType: InstitutionSubAdminAccountType;
+  facultyOptions: InstitutionFacultyOption[];
+  facultyOptionsLoading?: boolean;
   disabled?: boolean;
   title: string;
   description: string;
@@ -20,11 +23,20 @@ function emptyCreatePayload(accountType: InstitutionSubAdminAccountType): Create
     email: "",
     password: "",
     accountType,
+    facultyId: "",
+    facultyFullName: "",
+    facultyShortName: "",
+    facultyDescription: "",
+    departmentFullName: "",
+    departmentShortName: "",
+    departmentDescription: "",
   };
 }
 
 export default function SubAdminAccountForm({
   accountType,
+  facultyOptions,
+  facultyOptionsLoading,
   disabled,
   title,
   description,
@@ -33,14 +45,46 @@ export default function SubAdminAccountForm({
   const [form, setForm] = useState<CreateInstitutionSubAdminPayload>(emptyCreatePayload(accountType));
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    setForm(emptyCreatePayload(accountType));
+  }, [accountType]);
+
   const canSubmit = useMemo(() => {
+    const hasFacultyName = (form.facultyFullName ?? "").trim().length >= 2;
+    const hasDepartmentName = (form.departmentFullName ?? "").trim().length >= 2;
+    const hasFacultySelection = (form.facultyId ?? "").trim().length > 0;
+
+    if (accountType === "FACULTY") {
+      return (
+        form.name.trim().length >= 2 &&
+        form.email.trim().length >= 5 &&
+        form.password.length >= 8 &&
+        hasFacultyName &&
+        !disabled
+      );
+    }
+
     return (
       form.name.trim().length >= 2 &&
       form.email.trim().length >= 5 &&
       form.password.length >= 8 &&
+      hasFacultySelection &&
+      hasDepartmentName &&
       !disabled
     );
-  }, [disabled, form]);
+  }, [accountType, disabled, form]);
+
+  const facultySelectPlaceholder = useMemo(() => {
+    if (facultyOptionsLoading) {
+      return "Loading faculties...";
+    }
+
+    if (facultyOptions.length > 0) {
+      return "Select a faculty";
+    }
+
+    return "No faculties found";
+  }, [facultyOptions, facultyOptionsLoading]);
 
   const handleSubmit = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -54,6 +98,16 @@ export default function SubAdminAccountForm({
         ...form,
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
+        facultyId: form.facultyId?.trim() || undefined,
+        facultyFullName:
+          accountType === "FACULTY" ? form.facultyFullName?.trim() || undefined : undefined,
+        facultyShortName:
+          accountType === "FACULTY" ? form.facultyShortName?.trim() || undefined : undefined,
+        facultyDescription:
+          accountType === "FACULTY" ? form.facultyDescription?.trim() || undefined : undefined,
+        departmentFullName: form.departmentFullName?.trim() || undefined,
+        departmentShortName: form.departmentShortName?.trim() || undefined,
+        departmentDescription: form.departmentDescription?.trim() || undefined,
       });
       setForm(emptyCreatePayload(accountType));
     } finally {
@@ -107,6 +161,125 @@ export default function SubAdminAccountForm({
             At least 8 chars with uppercase, lowercase, number and special character.
           </p>
         </label>
+
+        {accountType === "FACULTY" && (
+          <div className="rounded-lg border border-border/70 bg-muted/20 p-3 space-y-3">
+            <p className="text-sm font-semibold">Faculty Details</p>
+
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Faculty Full Name</span>
+              <input
+                value={form.facultyFullName ?? ""}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, facultyFullName: event.target.value }))
+                }
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                placeholder="e.g. Faculty of Science"
+                disabled={disabled || submitting}
+                required
+              />
+            </label>
+
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Faculty Short Name (Optional)</span>
+              <input
+                value={form.facultyShortName ?? ""}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, facultyShortName: event.target.value }))
+                }
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                placeholder="e.g. SCI"
+                disabled={disabled || submitting}
+              />
+            </label>
+
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Faculty Description (Optional)</span>
+              <textarea
+                value={form.facultyDescription ?? ""}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, facultyDescription: event.target.value }))
+                }
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                placeholder="Brief faculty description"
+                disabled={disabled || submitting}
+                rows={3}
+              />
+            </label>
+          </div>
+        )}
+
+        {accountType === "DEPARTMENT" && (
+          <div className="rounded-lg border border-border/70 bg-muted/20 p-3 space-y-3">
+            <p className="text-sm font-semibold">Select Faculty</p>
+
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Faculty</span>
+              <select
+                value={form.facultyId ?? ""}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, facultyId: event.target.value }))
+                }
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                disabled={disabled || submitting || facultyOptionsLoading || facultyOptions.length === 0}
+                required
+              >
+                <option value="">{facultySelectPlaceholder}</option>
+                {facultyOptions.map((faculty) => (
+                  <option key={faculty.id} value={faculty.id}>
+                    {faculty.fullName}
+                    {faculty.shortName ? ` (${faculty.shortName})` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="rounded-lg border border-border/70 bg-background/60 p-3 space-y-3">
+            <p className="text-sm font-semibold">Department Details</p>
+
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Department Full Name</span>
+              <input
+                value={form.departmentFullName ?? ""}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, departmentFullName: event.target.value }))
+                }
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                placeholder="e.g. Department of Mathematics"
+                disabled={disabled || submitting}
+                required
+              />
+            </label>
+
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Department Short Name (Optional)</span>
+              <input
+                value={form.departmentShortName ?? ""}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, departmentShortName: event.target.value }))
+                }
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                placeholder="e.g. MATH"
+                disabled={disabled || submitting}
+              />
+            </label>
+
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Department Description (Optional)</span>
+              <textarea
+                value={form.departmentDescription ?? ""}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, departmentDescription: event.target.value }))
+                }
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                placeholder="Brief department description"
+                disabled={disabled || submitting}
+                rows={3}
+              />
+            </label>
+            </div>
+          </div>
+        )}
 
         <button
           type="submit"

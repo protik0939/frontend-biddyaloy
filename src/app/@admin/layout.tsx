@@ -1,5 +1,3 @@
-import LogoutButton from "@/Components/LogoutButton";
-
 export default function AdminLayout({
   children,
   pending,
@@ -12,7 +10,6 @@ export default function AdminLayout({
   return (
     <div className="border-blue-600">
       <div className="grid gap-4 p-4">
-        <LogoutButton />
         <div>{children}</div>
         <div>{pending}</div>
         <div>{admin}</div>

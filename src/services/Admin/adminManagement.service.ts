@@ -5,6 +5,13 @@ export interface CreateInstitutionSubAdminPayload {
   email: string;
   password: string;
   accountType: InstitutionSubAdminAccountType;
+  facultyId?: string;
+  facultyFullName?: string;
+  facultyShortName?: string;
+  facultyDescription?: string;
+  departmentFullName?: string;
+  departmentShortName?: string;
+  departmentDescription?: string;
 }
 
 export interface InstitutionSubAdminAccount {
@@ -15,6 +22,20 @@ export interface InstitutionSubAdminAccount {
   adminRole: "FACULTYADMIN" | "DEPARTMENTADMIN";
   institutionId: string;
   createdAt: string;
+  faculty?: {
+    id: string;
+    fullName: string;
+  } | null;
+  department?: {
+    id: string;
+    fullName: string;
+  } | null;
+}
+
+export interface InstitutionFacultyOption {
+  id: string;
+  fullName: string;
+  shortName: string | null;
 }
 
 type ApiSuccess<T> = {
@@ -61,4 +82,14 @@ export async function createInstitutionSubAdminAccount(payload: CreateInstitutio
   });
 
   return parseResponse<InstitutionSubAdminAccount>(response);
+}
+
+export async function listInstitutionFaculties() {
+  const response = await fetch(getApiPath("/institution-admin/faculties"), {
+    method: "GET",
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  return parseResponse<InstitutionFacultyOption[]>(response);
 }

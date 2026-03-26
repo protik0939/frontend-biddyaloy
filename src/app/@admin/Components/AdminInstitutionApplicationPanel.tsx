@@ -4,8 +4,14 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import type { CreateInstitutionSubAdminPayload } from "@/services/Admin/adminManagement.service";
-import { createInstitutionSubAdminAccount } from "@/services/Admin/adminManagement.service";
+import type {
+  CreateInstitutionSubAdminPayload,
+  InstitutionFacultyOption,
+} from "@/services/Admin/adminManagement.service";
+import {
+  createInstitutionSubAdminAccount,
+  listInstitutionFaculties,
+} from "@/services/Admin/adminManagement.service";
 import {
   createInstitutionApplication,
   getMyInstitutionApplications,
@@ -17,6 +23,8 @@ import ApplicationHistory from "./AdminInstitutionApplicationPanel/ApplicationHi
 import ApplicationStatusBanners from "./AdminInstitutionApplicationPanel/ApplicationStatusBanners";
 import InstitutionApplicationForm from "./AdminInstitutionApplicationPanel/InstitutionApplicationForm";
 import { emptyForm } from "./AdminInstitutionApplicationPanel/utils";
+import ThemeToggle from "@/Components/ThemeToggle";
+import LogoutButton from "@/Components/LogoutButton";
 
 export default function AdminInstitutionApplicationPanel() {
   const [applications, setApplications] = useState<InstitutionApplication[]>([]);
@@ -24,6 +32,8 @@ export default function AdminInstitutionApplicationPanel() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<CreateInstitutionApplicationPayload>(emptyForm());
   const [showApprovedBanner, setShowApprovedBanner] = useState(true);
+  const [faculties, setFaculties] = useState<InstitutionFacultyOption[]>([]);
+  const [facultiesLoading, setFacultiesLoading] = useState(false);
 
   const latest = applications[0];
   const isApproved = latest?.status === "APPROVED";
@@ -115,7 +125,18 @@ export default function AdminInstitutionApplicationPanel() {
     try {
       const created = await createInstitutionSubAdminAccount(payload);
       const accountKind = payload.accountType === "FACULTY" ? "Faculty" : "Department";
-      toast.success(`${accountKind} account created for ${created.email}`);
+      const details: string[] = [];
+
+      if (created.faculty?.fullName) {
+        details.push(`Faculty: ${created.faculty.fullName}`);
+      }
+
+      if (created.department?.fullName) {
+        details.push(`Department: ${created.department.fullName}`);
+      }
+
+      const detailsText = details.length > 0 ? ` (${details.join(" | ")})` : "";
+      toast.success(`${accountKind} account created for ${created.email}${detailsText}`);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to create faculty or department account";
@@ -123,6 +144,40 @@ export default function AdminInstitutionApplicationPanel() {
       throw error;
     }
   };
+
+  useEffect(() => {
+    if (!isApproved) {
+      setFaculties([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadFaculties = async () => {
+      setFacultiesLoading(true);
+      try {
+        const items = await listInstitutionFaculties();
+        if (!cancelled) {
+          setFaculties(items);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : "Failed to fetch faculties";
+          toast.error(message);
+        }
+      } finally {
+        if (!cancelled) {
+          setFacultiesLoading(false);
+        }
+      }
+    };
+
+    void loadFaculties();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isApproved]);
 
   if (loading) {
     return (
@@ -153,11 +208,21 @@ export default function AdminInstitutionApplicationPanel() {
   return (
     <section className="relative space-y-5 overflow-hidden rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm sm:p-6">
       <header>
-        <p className="text-xs font-medium uppercase tracking-wide text-primary">Admin Workflow</p>
-        <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Institution Application</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Submit your institution request for superadmin review. Status updates are shown below.
-        </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-primary">Admin Workflow</p>
+            <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Institution Application</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Submit your institution request for superadmin review. Status updates are shown below.
+            </p>
+          </div>
+          <div className="flex space-x-2">
+            <ThemeToggle />
+            <LogoutButton />
+          </div>
+
+        </div>
+
       </header>
 
       <ApplicationStatusBanners
@@ -171,6 +236,8 @@ export default function AdminInstitutionApplicationPanel() {
           latest={latest}
           approvedInstitutionType={approvedInstitutionType}
           onCreateSubAdmin={handleCreateSubAdminAccount}
+          faculties={faculties}
+          facultiesLoading={facultiesLoading}
         />
       )}
 

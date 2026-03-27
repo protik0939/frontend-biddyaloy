@@ -1,3 +1,5 @@
+import LogoutButton from "@/Components/LogoutButton";
+
 export default function StudentLayout({
   children,
   pending,
@@ -13,6 +15,7 @@ export default function StudentLayout({
         <h2 className="text-sm font-bold text-cyan-900 dark:text-cyan-100">STUDENT</h2>
       </div>
       <div className="grid gap-4 p-4">
+        <LogoutButton />
         <div>{children}</div>
         <div>{pending}</div>
         <div>{student}</div>

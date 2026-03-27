@@ -8,7 +8,7 @@ import {
   DepartmentManagementService,
   type AccountStatus,
   type Course,
-  type Program,
+  type CourseRegistration,
   type Section,
   type Semester,
   type Student,
@@ -54,20 +54,27 @@ export default function DepartmentSectionContent({
   const [sectionCapacity, setSectionCapacity] = useState("");
   const [creatingSection, setCreatingSection] = useState(false);
 
-  const [programs, setPrograms] = useState<Program[]>([]);
-  const [programTitle, setProgramTitle] = useState("");
-  const [programShortTitle, setProgramShortTitle] = useState("");
-  const [programDescription, setProgramDescription] = useState("");
-  const [programCredits, setProgramCredits] = useState("");
-  const [programCost, setProgramCost] = useState("");
-  const [creatingProgram, setCreatingProgram] = useState(false);
-
   const [courses, setCourses] = useState<Course[]>([]);
   const [courseCode, setCourseCode] = useState("");
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
-  const [courseProgramId, setCourseProgramId] = useState("");
+  const [courseCredits, setCourseCredits] = useState("");
   const [creatingCourse, setCreatingCourse] = useState(false);
+  const [editingCourseId, setEditingCourseId] = useState("");
+  const [editingCourseCode, setEditingCourseCode] = useState("");
+  const [editingCourseTitle, setEditingCourseTitle] = useState("");
+  const [editingCourseDescription, setEditingCourseDescription] = useState("");
+  const [editingCourseCredits, setEditingCourseCredits] = useState("");
+  const [updatingCourseId, setUpdatingCourseId] = useState("");
+  const [deletingCourseId, setDeletingCourseId] = useState("");
+
+  const [courseRegistrations, setCourseRegistrations] = useState<CourseRegistration[]>([]);
+  const [registrationSemesterId, setRegistrationSemesterId] = useState("");
+  const [registrationSectionId, setRegistrationSectionId] = useState("");
+  const [registrationCourseId, setRegistrationCourseId] = useState("");
+  const [registrationTeacherProfileId, setRegistrationTeacherProfileId] = useState("");
+  const [registrationStudentProfileId, setRegistrationStudentProfileId] = useState("");
+  const [creatingRegistration, setCreatingRegistration] = useState(false);
 
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [teacherName, setTeacherName] = useState("");
@@ -94,20 +101,21 @@ export default function DepartmentSectionContent({
     Boolean(semesterEndDate);
 
   const canCreateSection = useMemo(() => {
-    return sectionName.trim().length >= 2 && Boolean(sectionSemesterId);
+    return sectionName.trim().length >= 1 && sectionSemesterId.trim().length > 0;
   }, [sectionName, sectionSemesterId]);
 
-  const canCreateProgram = useMemo(() => {
-    return programTitle.trim().length >= 2;
-  }, [programTitle]);
-
   const canCreateCourse = useMemo(() => {
-    return (
-      courseCode.trim().length >= 2 &&
-      courseTitle.trim().length >= 2 &&
-      Boolean(courseProgramId)
-    );
-  }, [courseCode, courseProgramId, courseTitle]);
+    if (courseCode.trim().length < 2 || courseTitle.trim().length < 2) {
+      return false;
+    }
+
+    if (!courseCredits.trim()) {
+      return true;
+    }
+
+    const numericCredits = Number(courseCredits);
+    return Number.isInteger(numericCredits) && numericCredits > 0 && numericCredits <= 500;
+  }, [courseCode, courseCredits, courseTitle]);
 
   const canCreateTeacher = useMemo(() => {
     return (
@@ -137,11 +145,38 @@ export default function DepartmentSectionContent({
     );
   }, [studentEmail, studentId, studentInitial, studentName, studentPassword]);
 
+  const filteredSectionsForRegistration = useMemo(() => {
+    if (!registrationSemesterId) {
+      return sections;
+    }
+
+    return sections.filter((item) => item.semesterId === registrationSemesterId);
+  }, [registrationSemesterId, sections]);
+
+  const canCreateCourseRegistration = useMemo(() => {
+    return (
+      Boolean(registrationSemesterId) &&
+      Boolean(registrationSectionId) &&
+      Boolean(registrationCourseId) &&
+      Boolean(registrationTeacherProfileId) &&
+      Boolean(registrationStudentProfileId)
+    );
+  }, [
+    registrationCourseId,
+    registrationSectionId,
+    registrationSemesterId,
+    registrationStudentProfileId,
+    registrationTeacherProfileId,
+  ]);
+
   const reloadSemesters = async () => {
     const data = await DepartmentManagementService.listSemesters();
     setSemesters(data);
     if (!sectionSemesterId && data.length > 0) {
       setSectionSemesterId(data[0].id);
+    }
+    if (!registrationSemesterId && data.length > 0) {
+      setRegistrationSemesterId(data[0].id);
     }
   };
 
@@ -150,17 +185,14 @@ export default function DepartmentSectionContent({
     setSections(data);
   };
 
-  const reloadPrograms = async () => {
-    const data = await DepartmentManagementService.listPrograms();
-    setPrograms(data);
-    if (!courseProgramId && data.length > 0) {
-      setCourseProgramId(data[0].id);
-    }
-  };
-
   const reloadCourses = async () => {
     const data = await DepartmentManagementService.listCourses();
     setCourses(data);
+  };
+
+  const reloadCourseRegistrations = async () => {
+    const data = await DepartmentManagementService.listCourseRegistrations();
+    setCourseRegistrations(data);
   };
 
   const reloadTeachers = async () => {
@@ -202,12 +234,8 @@ export default function DepartmentSectionContent({
           await Promise.all([reloadSemesters(), reloadSections()]);
         }
 
-        if (section === "programs") {
-          await reloadPrograms();
-        }
-
         if (section === "courses") {
-          await Promise.all([reloadPrograms(), reloadCourses()]);
+          await reloadCourses();
         }
 
         if (section === "teachers") {
@@ -216,6 +244,17 @@ export default function DepartmentSectionContent({
 
         if (section === "students") {
           await reloadStudents();
+        }
+
+        if (section === "courseRegistrations") {
+          await Promise.all([
+            reloadSemesters(),
+            reloadSections(),
+            reloadCourses(),
+            reloadTeachers(),
+            reloadStudents(),
+            reloadCourseRegistrations(),
+          ]);
         }
       } catch (error) {
         if (cancelled) {
@@ -235,9 +274,51 @@ export default function DepartmentSectionContent({
     return () => {
       cancelled = true;
     };
-  // We intentionally reload when section changes; reload helpers are local wrappers.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // We intentionally reload when section changes; reload helpers are local wrappers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section]);
+
+  useEffect(() => {
+    if (!registrationTeacherProfileId && teachers.length > 0) {
+      setRegistrationTeacherProfileId(teachers[0].id);
+    }
+  }, [registrationTeacherProfileId, teachers]);
+
+  useEffect(() => {
+    if (!registrationStudentProfileId && students.length > 0) {
+      setRegistrationStudentProfileId(students[0].id);
+    }
+  }, [registrationStudentProfileId, students]);
+
+  useEffect(() => {
+    if (filteredSectionsForRegistration.length === 0) {
+      if (registrationSectionId) {
+        setRegistrationSectionId("");
+      }
+      return;
+    }
+
+    const selectedExists = filteredSectionsForRegistration.some(
+      (item) => item.id === registrationSectionId,
+    );
+    if (!selectedExists) {
+      setRegistrationSectionId(filteredSectionsForRegistration[0].id);
+    }
+  }, [filteredSectionsForRegistration, registrationSectionId]);
+
+  useEffect(() => {
+    if (courses.length === 0) {
+      if (registrationCourseId) {
+        setRegistrationCourseId("");
+      }
+      return;
+    }
+
+    const selectedExists = courses.some((item) => item.id === registrationCourseId);
+    if (!selectedExists) {
+      setRegistrationCourseId(courses[0].id);
+    }
+  }, [courses, registrationCourseId]);
 
   const onUpdateProfile = async (event: { preventDefault: () => void }) => {
     event.preventDefault();
@@ -299,8 +380,13 @@ export default function DepartmentSectionContent({
   const onCreateSection = async (event: { preventDefault: () => void }) => {
     event.preventDefault();
 
-    if (!canCreateSection) {
-      toast.warning("Provide section name and semester");
+    if (!sectionName.trim()) {
+      toast.warning("Provide section name");
+      return;
+    }
+
+    if (!sectionSemesterId.trim()) {
+      toast.warning("Select a semester");
       return;
     }
 
@@ -326,44 +412,11 @@ export default function DepartmentSectionContent({
     }
   };
 
-  const onCreateProgram = async (event: { preventDefault: () => void }) => {
-    event.preventDefault();
-
-    if (!canCreateProgram) {
-      toast.warning("Program title must be at least 2 characters");
-      return;
-    }
-
-    setCreatingProgram(true);
-    try {
-      await DepartmentManagementService.createProgram({
-        title: programTitle.trim(),
-        shortTitle: programShortTitle.trim() || undefined,
-        description: programDescription.trim() || undefined,
-        credits: programCredits.trim() ? Number(programCredits) : undefined,
-        cost: programCost.trim() ? Number(programCost) : undefined,
-      });
-
-      setProgramTitle("");
-      setProgramShortTitle("");
-      setProgramDescription("");
-      setProgramCredits("");
-      setProgramCost("");
-      await reloadPrograms();
-      toast.success("Program created successfully");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to create program";
-      toast.error(message);
-    } finally {
-      setCreatingProgram(false);
-    }
-  };
-
   const onCreateCourse = async (event: { preventDefault: () => void }) => {
     event.preventDefault();
 
     if (!canCreateCourse) {
-      toast.warning("Provide course code, title and program");
+      toast.warning("Provide valid course code, title and optional credits");
       return;
     }
 
@@ -372,13 +425,14 @@ export default function DepartmentSectionContent({
       await DepartmentManagementService.createCourse({
         courseCode: courseCode.trim(),
         courseTitle: courseTitle.trim(),
-        programId: courseProgramId,
+        credits: courseCredits.trim() ? Number(courseCredits) : undefined,
         description: courseDescription.trim() || undefined,
       });
 
       setCourseCode("");
       setCourseTitle("");
       setCourseDescription("");
+      setCourseCredits("");
       await reloadCourses();
       toast.success("Course created successfully");
     } catch (error) {
@@ -386,6 +440,72 @@ export default function DepartmentSectionContent({
       toast.error(message);
     } finally {
       setCreatingCourse(false);
+    }
+  };
+
+  const onStartCourseEdit = (course: Course) => {
+    setEditingCourseId(course.id);
+    setEditingCourseCode(course.courseCode);
+    setEditingCourseTitle(course.courseTitle);
+    setEditingCourseDescription(course.description ?? "");
+    setEditingCourseCredits(course.credits?.toString() ?? "");
+  };
+
+  const onCancelCourseEdit = () => {
+    setEditingCourseId("");
+    setEditingCourseCode("");
+    setEditingCourseTitle("");
+    setEditingCourseDescription("");
+    setEditingCourseCredits("");
+  };
+
+  const onUpdateCourse = async (courseId: string) => {
+    if (editingCourseCode.trim().length < 2 || editingCourseTitle.trim().length < 2) {
+      toast.warning("Course code and title are required");
+      return;
+    }
+
+    if (editingCourseCredits.trim()) {
+      const numericCredits = Number(editingCourseCredits);
+      if (!Number.isInteger(numericCredits) || numericCredits <= 0 || numericCredits > 500) {
+        toast.warning("Credits must be an integer between 1 and 500");
+        return;
+      }
+    }
+
+    setUpdatingCourseId(courseId);
+    try {
+      await DepartmentManagementService.updateCourse(courseId, {
+        courseCode: editingCourseCode.trim(),
+        courseTitle: editingCourseTitle.trim(),
+        credits: editingCourseCredits.trim() ? Number(editingCourseCredits) : undefined,
+        description: editingCourseDescription.trim() || undefined,
+      });
+      await reloadCourses();
+      onCancelCourseEdit();
+      toast.success("Course updated successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update course";
+      toast.error(message);
+    } finally {
+      setUpdatingCourseId("");
+    }
+  };
+
+  const onDeleteCourse = async (courseId: string) => {
+    setDeletingCourseId(courseId);
+    try {
+      await DepartmentManagementService.deleteCourse(courseId);
+      await reloadCourses();
+      if (editingCourseId === courseId) {
+        onCancelCourseEdit();
+      }
+      toast.success("Course deleted successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete course";
+      toast.error(message);
+    } finally {
+      setDeletingCourseId("");
     }
   };
 
@@ -482,6 +602,49 @@ export default function DepartmentSectionContent({
       toast.error(message);
     } finally {
       setUpdatingStudentId("");
+    }
+  };
+
+  const onCreateCourseRegistration = async (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+
+    if (!canCreateCourseRegistration) {
+      toast.warning("Select semester, section, program, course, teacher and student");
+      return;
+    }
+
+    setCreatingRegistration(true);
+    try {
+      await DepartmentManagementService.createCourseRegistration({
+        courseId: registrationCourseId,
+        studentProfileId: registrationStudentProfileId,
+        teacherProfileId: registrationTeacherProfileId,
+        sectionId: registrationSectionId,
+        semesterId: registrationSemesterId,
+      });
+
+      await reloadCourseRegistrations();
+      toast.success("Course registration created successfully");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to create course registration";
+      toast.error(message);
+    } finally {
+      setCreatingRegistration(false);
+    }
+  };
+
+  const formatSeasonYear = (item: { name: string; startDate: string; endDate: string }) => {
+    const start = new Date(item.startDate);
+    const end = new Date(item.endDate);
+
+    const startYear = start.getFullYear();
+    const endYear = end.getFullYear();
+
+    if (startYear === endYear) {
+      return `${item.name} ${startYear}`;
+    } else {
+      return `${item.name} ${startYear}-${String(endYear).slice(-2)}`;
     }
   };
 
@@ -625,7 +788,7 @@ export default function DepartmentSectionContent({
               <option value="">Select semester</option>
               {semesters.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.name}
+                  {formatSeasonYear(item)}
                 </option>
               ))}
             </select>
@@ -646,7 +809,7 @@ export default function DepartmentSectionContent({
           </div>
           <button
             type="submit"
-            disabled={creatingSection}
+            disabled={creatingSection || !canCreateSection}
             className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
           >
             {creatingSection ? "Creating..." : "Create Section"}
@@ -659,71 +822,6 @@ export default function DepartmentSectionContent({
               <p className="font-medium">{item.name}</p>
               <p className="text-muted-foreground">
                 Semester: {item.semester?.name ?? "-"} | Capacity: {item.sectionCapacity ?? "-"}
-              </p>
-            </div>
-          ))}
-        </div>
-      </article>
-    );
-  }
-
-  if (section === "programs") {
-    return (
-      <article className="space-y-4 rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
-        <h2 className="text-lg font-semibold">Program Management</h2>
-        {loadingIndicator}
-
-        <form className="space-y-3" onSubmit={onCreateProgram}>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <input
-              value={programTitle}
-              onChange={(event) => setProgramTitle(event.target.value)}
-              placeholder="Program title"
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            />
-            <input
-              value={programShortTitle}
-              onChange={(event) => setProgramShortTitle(event.target.value)}
-              placeholder="Short title (optional)"
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <input
-              value={programCredits}
-              onChange={(event) => setProgramCredits(event.target.value)}
-              placeholder="Credits (optional)"
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            />
-            <input
-              value={programCost}
-              onChange={(event) => setProgramCost(event.target.value)}
-              placeholder="Cost (optional)"
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            />
-            <input
-              value={programDescription}
-              onChange={(event) => setProgramDescription(event.target.value)}
-              placeholder="Description (optional)"
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={creatingProgram}
-            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
-          >
-            {creatingProgram ? "Creating..." : "Create Program"}
-          </button>
-        </form>
-
-        <div className="space-y-2">
-          {programs.map((item) => (
-            <div key={item.id} className="rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-sm">
-              <p className="font-medium">{item.title}</p>
-              <p className="text-muted-foreground">
-                {item.shortTitle ? `${item.shortTitle} | ` : ""}
-                Credits: {item.credits ?? "-"} | Cost: {item.cost ?? "-"}
               </p>
             </div>
           ))}
@@ -752,18 +850,15 @@ export default function DepartmentSectionContent({
               placeholder="Course title"
               className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
             />
-            <select
-              value={courseProgramId}
-              onChange={(event) => setCourseProgramId(event.target.value)}
+            <input
+              type="number"
+              min={1}
+              max={500}
+              value={courseCredits}
+              onChange={(event) => setCourseCredits(event.target.value)}
+              placeholder="Course credit (optional)"
               className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Select program</option>
-              {programs.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.title}
-                </option>
-              ))}
-            </select>
+            />
           </div>
           <input
             value={courseDescription}
@@ -783,12 +878,199 @@ export default function DepartmentSectionContent({
         <div className="space-y-2">
           {courses.map((item) => (
             <div key={item.id} className="rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-sm">
-              <p className="font-medium">
-                {item.courseCode} - {item.courseTitle}
-              </p>
-              <p className="text-muted-foreground">Program: {item.program?.title ?? "-"}</p>
+              {editingCourseId === item.id ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                    <input
+                      value={editingCourseCode}
+                      onChange={(event) => setEditingCourseCode(event.target.value)}
+                      className="rounded-lg border border-border bg-background px-2 py-1"
+                      placeholder="Course code"
+                    />
+                    <input
+                      value={editingCourseTitle}
+                      onChange={(event) => setEditingCourseTitle(event.target.value)}
+                      className="rounded-lg border border-border bg-background px-2 py-1"
+                      placeholder="Course title"
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      max={500}
+                      value={editingCourseCredits}
+                      onChange={(event) => setEditingCourseCredits(event.target.value)}
+                      className="rounded-lg border border-border bg-background px-2 py-1"
+                      placeholder="Credits"
+                    />
+                  </div>
+                  <input
+                    value={editingCourseDescription}
+                    onChange={(event) => setEditingCourseDescription(event.target.value)}
+                    className="w-full rounded-lg border border-border bg-background px-2 py-1"
+                    placeholder="Description"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void onUpdateCourse(item.id)}
+                      disabled={updatingCourseId === item.id}
+                      className="rounded-lg bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+                    >
+                      {updatingCourseId === item.id ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onCancelCourseEdit}
+                      className="rounded-lg border border-border bg-background px-3 py-1 text-xs font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="font-medium">
+                    {item.courseCode} - {item.courseTitle}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Credits: {item.credits ?? "-"}
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onStartCourseEdit(item)}
+                      className="rounded-lg border border-border bg-background px-3 py-1 text-xs font-medium"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void onDeleteCourse(item.id)}
+                      disabled={deletingCourseId === item.id}
+                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs font-medium text-red-700 disabled:opacity-60"
+                    >
+                      {deletingCourseId === item.id ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
+        </div>
+      </article>
+    );
+  }
+
+  if (section === "courseRegistrations") {
+    return (
+      <article className="space-y-4 rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
+        <h2 className="text-lg font-semibold">Course Registration</h2>
+        <p className="text-sm text-muted-foreground">
+          Register a student into a course for a semester and section using linked academic data.
+        </p>
+        {loadingIndicator}
+
+        <form className="space-y-3" onSubmit={onCreateCourseRegistration}>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+            <select
+              value={registrationSemesterId}
+              onChange={(event) => setRegistrationSemesterId(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select semester</option>
+              {semesters.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {formatSeasonYear(item)}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={registrationSectionId}
+              onChange={(event) => setRegistrationSectionId(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select section</option>
+              {filteredSectionsForRegistration.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={registrationCourseId}
+              onChange={(event) => setRegistrationCourseId(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select course</option>
+              {courses.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.courseCode} - {item.courseTitle}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={registrationTeacherProfileId}
+              onChange={(event) => setRegistrationTeacherProfileId(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select teacher</option>
+              {teachers.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.user.name} ({item.teacherInitial})
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={registrationStudentProfileId}
+              onChange={(event) => setRegistrationStudentProfileId(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select student</option>
+              {students.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.user.name} ({item.studentsId})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            disabled={creatingRegistration || !canCreateCourseRegistration}
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            {creatingRegistration ? "Registering..." : "Register Course"}
+          </button>
+        </form>
+
+        <div className="space-y-2">
+          {courseRegistrations.map((item) => (
+            <div key={item.id} className="rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-sm">
+              <p className="font-medium">
+                {item.course.courseCode} - {item.course.courseTitle}
+              </p>
+              <p className="text-muted-foreground">
+                Student: {item.studentProfile.user.name} ({item.studentProfile.studentsId}) | Teacher: {" "}
+                {item.teacherProfile.user.name} ({item.teacherProfile.teacherInitial})
+              </p>
+              <p className="text-muted-foreground">
+                Program: {item.program.title} | Section: {item.section.name} | Semester:{" "}
+                {formatSeasonYear(item.semester)}
+              </p>
+              <p className="text-muted-foreground">
+                Registered: {formatDateDDMMYYYY(item.registrationDate)}
+              </p>
+            </div>
+          ))}
+          {courseRegistrations.length === 0 && !loadingPageData ? (
+            <p className="rounded-xl border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+              No course registrations found.
+            </p>
+          ) : null}
         </div>
       </article>
     );
@@ -884,7 +1166,7 @@ export default function DepartmentSectionContent({
       <article className="space-y-4 rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
         <h2 className="text-lg font-semibold">Posting Management</h2>
         <p className="text-sm text-muted-foreground">
-          Create teacher job and student admission posts for your department programs.
+          Create teacher job and student admission posts for your department.
         </p>
         <PostingManagementPanel scope="DEPARTMENT" />
       </article>

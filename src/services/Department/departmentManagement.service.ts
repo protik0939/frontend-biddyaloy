@@ -35,6 +35,19 @@ export interface Section {
   };
 }
 
+export interface Course {
+  id: string;
+  courseCode: string;
+  courseTitle: string;
+  description: string | null;
+  credits: number | null;
+  programId: string | null;
+  program?: {
+    id: string;
+    title: string;
+  };
+}
+
 export interface Program {
   id: string;
   title: string;
@@ -44,15 +57,54 @@ export interface Program {
   cost: number | null;
 }
 
-export interface Course {
+export interface CourseRegistration {
   id: string;
-  courseCode: string;
-  courseTitle: string;
-  description: string | null;
+  registrationDate: string;
+  courseId: string;
+  studentProfileId: string;
+  teacherProfileId: string;
+  sectionId: string;
   programId: string;
-  program?: {
+  semesterId: string;
+  course: {
+    id: string;
+    courseCode: string;
+    courseTitle: string;
+  };
+  studentProfile: {
+    id: string;
+    studentInitial: string;
+    studentsId: string;
+    user: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  };
+  teacherProfile: {
+    id: string;
+    teacherInitial: string;
+    teachersId: string;
+    designation: string;
+    user: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  };
+  section: {
+    id: string;
+    name: string;
+  };
+  program: {
     id: string;
     title: string;
+  };
+  semester: {
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
   };
 }
 
@@ -152,6 +204,15 @@ async function apiPatch<T>(path: string, body: Record<string, unknown>) {
   return parseResponse<T>(response);
 }
 
+async function apiDelete<T>(path: string) {
+  const response = await fetch(getApiPath(path), {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  return parseResponse<T>(response);
+}
+
 export const DepartmentManagementService = {
   getProfile() {
     return apiGet<DepartmentProfile>("/api/v1/department/profile");
@@ -186,31 +247,53 @@ export const DepartmentManagementService = {
     return apiPost<Section>("/api/v1/department/sections", payload);
   },
 
-  listPrograms() {
-    return apiGet<Program[]>("/api/v1/department/programs");
-  },
-
-  createProgram(payload: {
-    title: string;
-    shortTitle?: string;
-    description?: string;
-    credits?: number;
-    cost?: number;
-  }) {
-    return apiPost<Program>("/api/v1/department/programs", payload);
-  },
-
   listCourses() {
     return apiGet<Course[]>("/api/v1/department/courses");
+  },
+
+  listPrograms() {
+    return apiGet<Program[]>("/api/v1/department/programs");
   },
 
   createCourse(payload: {
     courseCode: string;
     courseTitle: string;
-    programId: string;
+    credits?: number;
+    programId?: string;
     description?: string;
   }) {
     return apiPost<Course>("/api/v1/department/courses", payload);
+  },
+
+  updateCourse(
+    courseId: string,
+    payload: {
+      courseCode?: string;
+      courseTitle?: string;
+      credits?: number;
+      description?: string;
+    },
+  ) {
+    return apiPatch<Course>(`/api/v1/department/courses/${courseId}`, payload);
+  },
+
+  deleteCourse(courseId: string) {
+    return apiDelete<{ id: string }>(`/api/v1/department/courses/${courseId}`);
+  },
+
+  listCourseRegistrations() {
+    return apiGet<CourseRegistration[]>("/api/v1/department/course-registrations");
+  },
+
+  createCourseRegistration(payload: {
+    courseId: string;
+    studentProfileId: string;
+    teacherProfileId: string;
+    sectionId: string;
+    programId?: string;
+    semesterId: string;
+  }) {
+    return apiPost<CourseRegistration>("/api/v1/department/course-registrations", payload);
   },
 
   listTeachers() {

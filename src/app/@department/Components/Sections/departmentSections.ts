@@ -4,7 +4,6 @@ import {
   Home,
   Layers,
   Megaphone,
-  School,
   Settings,
   SquareStack,
   Users,
@@ -16,8 +15,8 @@ export type DepartmentSection =
   | "profile"
   | "semesters"
   | "sections"
-  | "programs"
   | "courses"
+  | "courseRegistrations"
   | "teachers"
   | "students"
   | "posts";
@@ -34,8 +33,13 @@ export const departmentSidebarItems: DepartmentSidebarItem[] = [
   { label: "Profile", href: "/profile", section: "profile", Icon: Settings },
   { label: "Semesters", href: "/semesters", section: "semesters", Icon: Layers },
   { label: "Sections", href: "/sections", section: "sections", Icon: SquareStack },
-  { label: "Programs", href: "/programs", section: "programs", Icon: School },
   { label: "Courses", href: "/courses", section: "courses", Icon: BookOpen },
+  {
+    label: "Course Registration",
+    href: "/course-registrations",
+    section: "courseRegistrations",
+    Icon: BookOpen,
+  },
   { label: "Teachers", href: "/teachers", section: "teachers", Icon: GraduationCap },
   { label: "Students", href: "/students", section: "students", Icon: Users },
   { label: "Posts", href: "/posts", section: "posts", Icon: Megaphone },

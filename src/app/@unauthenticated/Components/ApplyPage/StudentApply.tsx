@@ -63,10 +63,10 @@ export default function StudentApply() {
           Student admissions
         </p>
         <h1 className="text-3xl font-semibold text-foreground md:text-4xl">
-          Find the right program and apply in minutes.
+          Find the right admission opportunity and apply in minutes.
         </h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Browse verified programs, compare requirements, and submit your
+          Browse verified admission posts, compare requirements, and submit your
           application confidently.
         </p>
       </Reveal>

@@ -5,7 +5,6 @@ import {
   BookOpen,
   Layers,
   Menu,
-  School,
   SquareStack,
   X,
 } from "lucide-react";
@@ -25,14 +24,14 @@ import {
 const overviewStats = [
   { label: "Semesters", value: "Active", Icon: Layers },
   { label: "Sections", value: "Managed", Icon: SquareStack },
-  { label: "Programs", value: "Configured", Icon: School },
+  { label: "Teachers", value: "Managed", Icon: BookOpen },
   { label: "Courses", value: "Live", Icon: BookOpen },
 ];
 
 const updateNotes = [
   "Section capacity planning is available with semester linkage.",
   "Teacher and student account approval actions are enabled.",
-  "Program and course setup is now managed from one workspace.",
+  "Course setup is managed directly from department workspace.",
 ];
 
 interface DepartmentDashboardProps {
@@ -129,7 +128,7 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
               <p className="text-sm font-medium text-primary">Department Control Center</p>
               <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Department Dashboard</h1>
               <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-                Manage semesters, sections, teachers, students, programs, and courses.
+                Manage semesters, sections, teachers, students, and courses.
               </p>
             </div>
             <div className="flex flex-row justify-center gap-3">
@@ -213,7 +212,7 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
                       <div className="rounded-xl border border-border/70 bg-background/60 p-4">
                         <p className="text-sm font-medium">Academic Configuration</p>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          Manage programs and course offerings in one flow.
+                          Manage course offerings in one flow.
                         </p>
                       </div>
                     </article>

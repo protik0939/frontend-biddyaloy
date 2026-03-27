@@ -179,7 +179,7 @@ export default function FacultyDashboard({ section }: Readonly<FacultyDashboardP
                         <h2 className="text-base font-semibold sm:text-lg">Snapshot</h2>
                         <div className="mt-4 space-y-3 text-sm">
                           <div className="flex items-center justify-between rounded-lg bg-background/70 px-3 py-2">
-                            <span className="text-muted-foreground">Programs</span>
+                            <span className="text-muted-foreground">Departments</span>
                             <span className="font-semibold">18</span>
                           </div>
                           <div className="flex items-center justify-between rounded-lg bg-background/70 px-3 py-2">

@@ -1,6 +1,5 @@
 import {
   Check,
-  BookOpenText,
   GraduationCap,
   LayoutDashboard,
   Layers3,
@@ -219,12 +218,6 @@ export default function AdminDashboard({
   const actionCards = useMemo(
     () => [
       {
-        title: "Program Management",
-        description: "Create and manage institutional programs and curriculum structures.",
-        icon: BookOpenText,
-        enabled: true,
-      },
-      {
         title: "Academic Workflow",
         description: "Set up semesters, sections, and class-flow configurations.",
         icon: Workflow,
@@ -253,7 +246,6 @@ export default function AdminDashboard({
     enabled: boolean;
   }[] = [
       { key: "overview", label: "Overview", icon: LayoutDashboard, enabled: true },
-      { key: "programs", label: "Programs", icon: BookOpenText, enabled: true },
       { key: "workflow", label: "Academic Workflow", icon: Workflow, enabled: true },
       {
         key: "faculty",
@@ -436,15 +428,6 @@ export default function AdminDashboard({
                   </button>
                 ))}
               </div>
-            </div>
-          )}
-
-          {activeSection === "programs" && (
-            <div className="rounded-xl border border-border/70 bg-background/70 p-4">
-              <h3 className="text-base font-semibold">Programs</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Program creation and management UI will be wired to API in the next step.
-              </p>
             </div>
           )}
 

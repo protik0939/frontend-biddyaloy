@@ -26,6 +26,7 @@ export default function TeacherDashboard({ section }: Readonly<TeacherDashboardP
   const [showSidebar, setShowSidebar] = useState(true);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [showFullscreenLoader, setShowFullscreenLoader] = useState(false);
   const [profileState, setProfileState] = useState<TeacherPortalProfileResponse | null>(null);
 
   const reloadProfile = async () => {
@@ -35,13 +36,27 @@ export default function TeacherDashboard({ section }: Readonly<TeacherDashboardP
 
   useEffect(() => {
     let cancelled = false;
+    let shouldShowFullscreenLoader = false;
 
     const load = async () => {
+      if (typeof window !== "undefined") {
+        const loaderSeen = window.sessionStorage.getItem("teacher:fullscreen-loader-seen");
+        shouldShowFullscreenLoader = loaderSeen !== "1";
+      }
+
+      if (!cancelled) {
+        setShowFullscreenLoader(shouldShowFullscreenLoader);
+      }
+
       setLoadingProfile(true);
       try {
         const data = await TeacherPortalService.getProfileOverview();
         if (!cancelled) {
           setProfileState(data);
+
+          if (shouldShowFullscreenLoader && typeof window !== "undefined") {
+            window.sessionStorage.setItem("teacher:fullscreen-loader-seen", "1");
+          }
         }
       } catch (error) {
         if (cancelled) {
@@ -53,6 +68,7 @@ export default function TeacherDashboard({ section }: Readonly<TeacherDashboardP
       } finally {
         if (!cancelled) {
           setLoadingProfile(false);
+          setShowFullscreenLoader(false);
         }
       }
     };
@@ -86,11 +102,57 @@ export default function TeacherDashboard({ section }: Readonly<TeacherDashboardP
     "Track approved and pending institution applications in the same portal.",
   ];
 
-  if (!loadingProfile && !profileState) {
+  if (loadingProfile) {
+    if (!showFullscreenLoader) {
+      return (
+        <section className="relative min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8">
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute -left-24 top-10 h-64 w-64 rounded-full bg-primary/20 blur-3xl" />
+            <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-accent/25 blur-3xl" />
+          </div>
+
+          <div className="relative mx-auto max-w-7xl">
+            <div className="inline-flex items-center gap-2 rounded-xl border border-border/70 bg-card/90 px-4 py-2 text-sm text-muted-foreground shadow-sm">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading teacher workspace...
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    return (
+      <section className="relative flex min-h-screen items-center justify-center bg-background px-4 py-8 sm:px-6 lg:px-8">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-24 top-10 h-64 w-64 rounded-full bg-primary/20 blur-3xl" />
+          <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-accent/25 blur-3xl" />
+        </div>
+
+        <article className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-border/70 bg-card/90 p-0 shadow-sm">
+          <div className="h-1.5 w-full animate-pulse bg-linear-to-r from-primary/20 via-primary/80 to-primary/20" />
+          <div className="p-6 sm:p-7">
+            <div className="flex items-center gap-4">
+              <div className="relative inline-flex h-12 w-12 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="absolute inline-flex h-12 w-12 animate-ping rounded-full border border-primary/20" />
+              </div>
+
+              <div>
+                <p className="text-base font-semibold tracking-tight">Loading, Please Wait!</p>
+                <p className="mt-1 text-sm text-muted-foreground">Checking your institution assignment...</p>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+    );
+  }
+
+  if (!profileState) {
     return null;
   }
 
-  if (!loadingProfile && !profileState?.hasInstitution) {
+  if (!profileState?.hasInstitution) {
     return (
       <section className="relative min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8">
         <div className="pointer-events-none absolute inset-0">
@@ -111,7 +173,12 @@ export default function TeacherDashboard({ section }: Readonly<TeacherDashboardP
             </div>
           </header>
 
-          <TeacherApplicationGate existingApplications={profileState?.applications ?? []} onApplied={reloadProfile} />
+          <TeacherApplicationGate
+            existingApplications={profileState?.applications ?? []}
+            applicationProfile={profileState.applicationProfile}
+            onApplied={reloadProfile}
+            onProfileUpdated={reloadProfile}
+          />
         </div>
       </section>
     );
@@ -211,34 +278,7 @@ export default function TeacherDashboard({ section }: Readonly<TeacherDashboardP
           </header>
 
           <div className={`space-y-6 pb-3 transition-all duration-300 ease-out ${showSidebar ? "lg:scale-100" : "lg:scale-[0.995]"}`}>
-            {loadingProfile ? (
-              <article className="overflow-hidden rounded-2xl border border-border/70 bg-card/90 p-0 shadow-sm">
-                <div className="relative">
-                  <div className="h-1.5 w-full bg-linear-to-r from-primary/20 via-primary/80 to-primary/20 animate-pulse" />
-                  <div className="p-6 sm:p-7">
-                    <div className="flex items-center gap-4">
-                      <div className="relative inline-flex h-12 w-12 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
-                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                        <span className="absolute inline-flex h-12 w-12 animate-ping rounded-full border border-primary/20" />
-                      </div>
-
-                      <div>
-                        <p className="text-base font-semibold tracking-tight">Lodaing, Please Wait!</p>
-                        <p className="mt-1 text-sm text-muted-foreground">Preparing your teacher workspace...</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                      <div className="h-9 animate-pulse rounded-lg bg-muted/70" />
-                      <div className="h-9 animate-pulse rounded-lg bg-muted/70" />
-                      <div className="h-9 animate-pulse rounded-lg bg-muted/70" />
-                    </div>
-                  </div>
-                </div>
-              </article>
-            ) : null}
-
-            {isOverview && !loadingProfile ? (
+            {isOverview ? (
               <>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   {overviewStats.map((item) => (
@@ -315,7 +355,7 @@ export default function TeacherDashboard({ section }: Readonly<TeacherDashboardP
               </>
             ) : null}
 
-            {loadingProfile ? null : <TeacherSectionContent section={section} />}
+            <TeacherSectionContent section={section} />
           </div>
         </div>
       </div>

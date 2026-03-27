@@ -4,6 +4,7 @@ import {
   Home,
   Layers,
   Megaphone,
+  ScrollText,
   Settings,
   SquareStack,
   Users,
@@ -17,8 +18,10 @@ export type DepartmentSection =
   | "batches"
   | "sections"
   | "courses"
+  | "courseTeacherAssignments"
   | "courseRegistrations"
   | "teachers"
+  | "teacherApplications"
   | "students"
   | "posts";
 
@@ -37,10 +40,22 @@ export const departmentSidebarItems: DepartmentSidebarItem[] = [
   { label: "Sections", href: "/sections", section: "sections", Icon: SquareStack },
   { label: "Courses", href: "/courses", section: "courses", Icon: BookOpen },
   {
+    label: "Course Teacher Assignment",
+    href: "/course-teacher-assignments",
+    section: "courseTeacherAssignments",
+    Icon: BookOpen,
+  },
+  {
     label: "Course Registration",
     href: "/course-registrations",
     section: "courseRegistrations",
     Icon: BookOpen,
+  },
+  {
+    label: "Teacher Applications",
+    href: "/teacher-applications",
+    section: "teacherApplications",
+    Icon: ScrollText,
   },
   { label: "Teachers", href: "/teachers", section: "teachers", Icon: GraduationCap },
   { label: "Students", href: "/students", section: "students", Icon: Users },

@@ -2,9 +2,11 @@
 
 import { Loader2, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 
 import {
+  type DepartmentTeacherJobApplication,
   type Batch,
   DepartmentManagementService,
   type AccountStatus,
@@ -14,6 +16,7 @@ import {
   type Section,
   type Semester,
   type Student,
+  type TeacherJobApplicationStatus,
   type Teacher,
 } from "@/services/Department/departmentManagement.service";
 import PostingManagementPanel from "@/Components/PostingManagement/PostingManagementPanel";
@@ -32,6 +35,13 @@ const formatDateDDMMYYYY = (value: string | Date) =>
   }).format(new Date(value));
 
 const STATUS_OPTIONS: AccountStatus[] = ["PENDING", "ACTIVE", "DEACTIVATED", "BANNED"];
+const TEACHER_APPLICATION_FILTER_OPTIONS: Array<TeacherJobApplicationStatus | "ALL"> = [
+  "ALL",
+  "PENDING",
+  "SHORTLISTED",
+  "APPROVED",
+  "REJECTED",
+];
 
 export default function DepartmentSectionContent({
   section,
@@ -132,6 +142,21 @@ export default function DepartmentSectionContent({
   const [studentId, setStudentId] = useState("");
   const [creatingStudent, setCreatingStudent] = useState(false);
   const [updatingStudentId, setUpdatingStudentId] = useState("");
+
+  const [teacherApplications, setTeacherApplications] = useState<DepartmentTeacherJobApplication[]>([]);
+  const [teacherApplicationFilter, setTeacherApplicationFilter] = useState<
+    TeacherJobApplicationStatus | "ALL"
+  >("ALL");
+  const [activeTeacherApplication, setActiveTeacherApplication] =
+    useState<DepartmentTeacherJobApplication | null>(null);
+  const [reviewingTeacherApplication, setReviewingTeacherApplication] = useState(false);
+  const [reviewResponseMessage, setReviewResponseMessage] = useState("");
+  const [reviewRejectionReason, setReviewRejectionReason] = useState("");
+  const [reviewTeacherInitial, setReviewTeacherInitial] = useState("");
+  const [reviewTeacherId, setReviewTeacherId] = useState("");
+  const [reviewTeacherDesignation, setReviewTeacherDesignation] = useState("");
+  const [reviewTeacherBio, setReviewTeacherBio] = useState("");
+  const [portalReady, setPortalReady] = useState(false);
 
   const canCreateSemester =
     semesterName.trim().length >= 2 &&
@@ -331,6 +356,11 @@ export default function DepartmentSectionContent({
     setStudents(data);
   };
 
+  const reloadTeacherApplications = async (status?: TeacherJobApplicationStatus) => {
+    const data = await DepartmentManagementService.listTeacherApplications(status);
+    setTeacherApplications(data);
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -376,13 +406,32 @@ export default function DepartmentSectionContent({
           await reloadStudents();
         }
 
-        if (section === "courseRegistrations") {
+        if (section === "teacherApplications") {
+          await Promise.all([
+            reloadTeachers(),
+            reloadTeacherApplications(
+              teacherApplicationFilter === "ALL" ? undefined : teacherApplicationFilter,
+            ),
+          ]);
+        }
+
+        if (section === "courseTeacherAssignments") {
           await Promise.all([
             reloadSemesters(),
             reloadBatches(),
             reloadSections(),
             reloadCourses(),
             reloadTeachers(),
+            reloadCourseTeacherAssignments(),
+          ]);
+        }
+
+        if (section === "courseRegistrations") {
+          await Promise.all([
+            reloadSemesters(),
+            reloadBatches(),
+            reloadSections(),
+            reloadCourses(),
             reloadStudents(),
             reloadCourseTeacherAssignments(),
             reloadCourseRegistrations(),
@@ -408,7 +457,11 @@ export default function DepartmentSectionContent({
     };
     // We intentionally reload when section changes; reload helpers are local wrappers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [section]);
+  }, [section, teacherApplicationFilter]);
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
 
   useEffect(() => {
     if (!sectionBatchId && batches.length > 0) {
@@ -983,6 +1036,102 @@ export default function DepartmentSectionContent({
     } finally {
       setUpdatingStudentId("");
     }
+  };
+
+  const openTeacherApplicationModal = (item: DepartmentTeacherJobApplication) => {
+    setActiveTeacherApplication(item);
+    setReviewResponseMessage(item.institutionResponse ?? "");
+    setReviewRejectionReason("");
+
+    const existingProfile = teachers.find((teacher) => teacher.user.id === item.teacherUser.id);
+    setReviewTeacherInitial(existingProfile?.teacherInitial ?? "");
+    setReviewTeacherId(existingProfile?.teachersId ?? "");
+    setReviewTeacherDesignation(existingProfile?.designation ?? "Lecturer");
+    setReviewTeacherBio(existingProfile?.bio ?? "");
+  };
+
+  const closeTeacherApplicationModal = () => {
+    setActiveTeacherApplication(null);
+    setReviewResponseMessage("");
+    setReviewRejectionReason("");
+    setReviewTeacherInitial("");
+    setReviewTeacherId("");
+    setReviewTeacherDesignation("");
+    setReviewTeacherBio("");
+  };
+
+  const reviewTeacherApplication = async (
+    status: Extract<TeacherJobApplicationStatus, "SHORTLISTED" | "APPROVED" | "REJECTED">,
+  ) => {
+    if (!activeTeacherApplication) {
+      return;
+    }
+
+    if (status === "REJECTED" && !reviewRejectionReason.trim()) {
+      toast.warning("Rejection reason is required");
+      return;
+    }
+
+    if (status === "APPROVED") {
+      if (
+        reviewTeacherInitial.trim().length < 2 ||
+        reviewTeacherId.trim().length < 2 ||
+        reviewTeacherDesignation.trim().length < 2
+      ) {
+        toast.warning("Teacher initial, teacher ID and designation are required for approval");
+        return;
+      }
+    }
+
+    setReviewingTeacherApplication(true);
+    try {
+      await DepartmentManagementService.reviewTeacherApplication(activeTeacherApplication.id, {
+        status,
+        responseMessage: reviewResponseMessage.trim() || undefined,
+        rejectionReason:
+          status === "REJECTED" ? reviewRejectionReason.trim() || undefined : undefined,
+        teacherInitial: status === "APPROVED" ? reviewTeacherInitial.trim() : undefined,
+        teachersId: status === "APPROVED" ? reviewTeacherId.trim() : undefined,
+        designation: status === "APPROVED" ? reviewTeacherDesignation.trim() : undefined,
+        bio: status === "APPROVED" ? reviewTeacherBio.trim() || undefined : undefined,
+        departmentId: activeTeacherApplication.department?.id ?? undefined,
+      });
+
+      await Promise.all([
+        reloadTeacherApplications(teacherApplicationFilter === "ALL" ? undefined : teacherApplicationFilter),
+        reloadTeachers(),
+      ]);
+      let successMessage = "Application rejected successfully";
+      if (status === "SHORTLISTED") {
+        successMessage = "Application shortlisted successfully";
+      } else if (status === "APPROVED") {
+        successMessage = "Application accepted successfully";
+      }
+
+      toast.success(successMessage);
+      closeTeacherApplicationModal();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to review application";
+      toast.error(message);
+    } finally {
+      setReviewingTeacherApplication(false);
+    }
+  };
+
+  const teacherApplicationStatusClasses = (status: TeacherJobApplicationStatus) => {
+    if (status === "APPROVED") {
+      return "bg-emerald-100 text-emerald-700";
+    }
+
+    if (status === "REJECTED") {
+      return "bg-rose-100 text-rose-700";
+    }
+
+    if (status === "SHORTLISTED") {
+      return "bg-amber-100 text-amber-700";
+    }
+
+    return "bg-slate-100 text-slate-700";
   };
 
   const onAssignTeacherToCourseSection = async (event: { preventDefault: () => void }) => {
@@ -1631,12 +1780,12 @@ export default function DepartmentSectionContent({
     );
   }
 
-  if (section === "courseRegistrations") {
+  if (section === "courseTeacherAssignments") {
     return (
       <article className="space-y-4 rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
-        <h2 className="text-lg font-semibold">Course Registration</h2>
+        <h2 className="text-lg font-semibold">Course Teacher Assignment</h2>
         <p className="text-sm text-muted-foreground">
-          Assign teacher by section and course first, then register students without selecting teacher.
+          Assign a teacher to a course and section. This assignment is used automatically during course registration.
         </p>
         {loadingIndicator}
 
@@ -1730,6 +1879,36 @@ export default function DepartmentSectionContent({
             ) : null}
           </div>
         </form>
+
+        <div className="space-y-2">
+          {courseTeacherAssignments.map((item) => (
+            <div key={item.id} className="rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-sm">
+              <p className="font-medium">
+                {item.section.name} | {item.course.courseCode} - {item.course.courseTitle}
+              </p>
+              <p className="text-muted-foreground">
+                Teacher: {item.teacherProfile.user.name} ({item.teacherProfile.teacherInitial}) | Designation: {item.teacherProfile.designation}
+              </p>
+            </div>
+          ))}
+          {courseTeacherAssignments.length === 0 && !loadingPageData ? (
+            <p className="rounded-xl border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+              No teacher assignments found.
+            </p>
+          ) : null}
+        </div>
+      </article>
+    );
+  }
+
+  if (section === "courseRegistrations") {
+    return (
+      <article className="space-y-4 rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
+        <h2 className="text-lg font-semibold">Course Registration</h2>
+        <p className="text-sm text-muted-foreground">
+          Register students to courses. Teacher is now auto-resolved from Course Teacher Assignment.
+        </p>
+        {loadingIndicator}
 
         <form className="space-y-3" onSubmit={onCreateCourseRegistration}>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -1942,6 +2121,301 @@ export default function DepartmentSectionContent({
           ) : null}
         </div>
       </article>
+    );
+  }
+
+  if (section === "teacherApplications") {
+    const teacherApplicationModal = activeTeacherApplication ? (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+        <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Teacher Application Details
+              </p>
+              <h3 className="text-lg font-semibold">{activeTeacherApplication.teacherUser.name}</h3>
+              <p className="text-sm text-muted-foreground">{activeTeacherApplication.teacherUser.email}</p>
+            </div>
+            <button
+              type="button"
+              onClick={closeTeacherApplicationModal}
+              className="rounded-lg border border-border bg-background px-3 py-1 text-xs font-medium"
+            >
+              Close
+            </button>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+              <p className="text-xs text-muted-foreground">Posting</p>
+              <p className="font-medium">{activeTeacherApplication.posting.title}</p>
+              <p className="text-sm text-muted-foreground">
+                Location: {activeTeacherApplication.posting.location ?? "-"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Department: {activeTeacherApplication.department?.fullName ?? "-"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Applied: {formatDateDDMMYYYY(activeTeacherApplication.appliedAt)}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+              <p className="text-xs text-muted-foreground">Current Status</p>
+              <span
+                className={`mt-1 inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${teacherApplicationStatusClasses(activeTeacherApplication.status)}`}
+              >
+                {activeTeacherApplication.status}
+              </span>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Last response: {activeTeacherApplication.institutionResponse ?? "-"}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-border/70 bg-background/70 p-3">
+            <p className="text-xs text-muted-foreground">Cover Letter</p>
+            <p className="mt-1 whitespace-pre-wrap text-sm">
+              {activeTeacherApplication.coverLetter ?? "No cover letter provided."}
+            </p>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-border/70 bg-background/70 p-3">
+            <p className="text-xs text-muted-foreground">Application Profile</p>
+            {activeTeacherApplication.teacherUser.teacherApplicationProfile ? (
+              <div className="mt-1 space-y-2 text-sm">
+                <p>
+                  <span className="font-medium">Headline:</span>{" "}
+                  {activeTeacherApplication.teacherUser.teacherApplicationProfile.headline}
+                </p>
+                <p>
+                  <span className="font-medium">About:</span>{" "}
+                  {activeTeacherApplication.teacherUser.teacherApplicationProfile.about}
+                </p>
+                <p>
+                  <span className="font-medium">Skills:</span>{" "}
+                  {activeTeacherApplication.teacherUser.teacherApplicationProfile.skills.join(", ") || "-"}
+                </p>
+                <p>
+                  <span className="font-medium">Certifications:</span>{" "}
+                  {activeTeacherApplication.teacherUser.teacherApplicationProfile.certifications.join(", ") || "-"}
+                </p>
+                <p>
+                  <span className="font-medium">Resume:</span>{" "}
+                  <a
+                    href={activeTeacherApplication.teacherUser.teacherApplicationProfile.resumeUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary underline"
+                  >
+                    Open resume
+                  </a>
+                </p>
+                {activeTeacherApplication.teacherUser.teacherApplicationProfile.portfolioUrl ? (
+                  <p>
+                    <span className="font-medium">Portfolio:</span>{" "}
+                    <a
+                      href={activeTeacherApplication.teacherUser.teacherApplicationProfile.portfolioUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline"
+                    >
+                      Open portfolio
+                    </a>
+                  </p>
+                ) : null}
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div>
+                    <p className="font-medium">Academic Records</p>
+                    <div className="mt-1 space-y-1 text-xs text-muted-foreground">
+                      {activeTeacherApplication.teacherUser.teacherApplicationProfile.academicRecords.map(
+                        (record) => (
+                          <p key={`${record.degree}-${record.institute}-${record.year}`}>
+                            {record.degree} | {record.institute} | {record.result} | {record.year}
+                          </p>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="font-medium">Experience Records</p>
+                    <div className="mt-1 space-y-1 text-xs text-muted-foreground">
+                      {activeTeacherApplication.teacherUser.teacherApplicationProfile.experiences.map(
+                        (record) => (
+                          <p key={`${record.title}-${record.organization}-${record.startDate}`}>
+                            {record.title} @ {record.organization} ({record.startDate}
+                            {record.endDate ? ` - ${record.endDate}` : " - Present"})
+                          </p>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="mt-1 text-sm text-muted-foreground">No application profile submitted.</p>
+            )}
+          </div>
+
+          {activeTeacherApplication.status === "PENDING" ||
+          activeTeacherApplication.status === "SHORTLISTED" ? (
+            <div className="mt-4 space-y-3 rounded-xl border border-border/70 bg-background/70 p-3">
+              <h4 className="text-sm font-semibold">Review Decision</h4>
+
+              <textarea
+                rows={2}
+                value={reviewResponseMessage}
+                onChange={(event) => setReviewResponseMessage(event.target.value)}
+                placeholder="Response note for candidate (optional)"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              />
+
+              <textarea
+                rows={2}
+                value={reviewRejectionReason}
+                onChange={(event) => setReviewRejectionReason(event.target.value)}
+                placeholder="Rejection reason (required only for reject)"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              />
+
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                <input
+                  value={reviewTeacherInitial}
+                  onChange={(event) => setReviewTeacherInitial(event.target.value)}
+                  placeholder="Teacher initial (required for accept)"
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                />
+                <input
+                  value={reviewTeacherId}
+                  onChange={(event) => setReviewTeacherId(event.target.value)}
+                  placeholder="Teacher ID (required for accept)"
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                />
+                <input
+                  value={reviewTeacherDesignation}
+                  onChange={(event) => setReviewTeacherDesignation(event.target.value)}
+                  placeholder="Designation (required for accept)"
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <textarea
+                rows={2}
+                value={reviewTeacherBio}
+                onChange={(event) => setReviewTeacherBio(event.target.value)}
+                placeholder="Teacher bio (optional, used on accept)"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              />
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => void reviewTeacherApplication("APPROVED")}
+                  disabled={reviewingTeacherApplication}
+                  className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                >
+                  {reviewingTeacherApplication ? "Processing..." : "Accept"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void reviewTeacherApplication("SHORTLISTED")}
+                  disabled={reviewingTeacherApplication}
+                  className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                >
+                  {reviewingTeacherApplication ? "Processing..." : "Shortlist"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void reviewTeacherApplication("REJECTED")}
+                  disabled={reviewingTeacherApplication}
+                  className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                >
+                  {reviewingTeacherApplication ? "Processing..." : "Reject"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-muted-foreground">
+              This application is finalized and can no longer be changed.
+            </p>
+          )}
+        </div>
+      </div>
+    ) : null;
+
+    return (
+      <>
+        <article className="space-y-4 rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
+          <h2 className="text-lg font-semibold">Teacher Applications</h2>
+          <p className="text-sm text-muted-foreground">
+            Review incoming teacher proposals and mark them as Accepted, Shortlisted (waiting list),
+            or Rejected.
+          </p>
+          {loadingIndicator}
+
+          <div className="flex flex-wrap gap-2">
+            {TEACHER_APPLICATION_FILTER_OPTIONS.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setTeacherApplicationFilter(item)}
+                className={`rounded-lg border px-3 py-1 text-xs font-medium ${
+                  teacherApplicationFilter === item
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background"
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            {teacherApplications.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-xl border border-border/70 bg-background/70 px-3 py-3 text-sm"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium">{item.teacherUser.name}</p>
+                    <p className="text-muted-foreground">{item.teacherUser.email}</p>
+                    <p className="text-muted-foreground">
+                      {item.posting.title}
+                      {item.department?.fullName ? ` | ${item.department.fullName}` : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Applied on {formatDateDDMMYYYY(item.appliedAt)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-1 text-[11px] font-semibold ${teacherApplicationStatusClasses(item.status)}`}
+                    >
+                      {item.status}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => openTeacherApplicationModal(item)}
+                      className="rounded-lg border border-border bg-background px-3 py-1 text-xs font-medium"
+                    >
+                      View Details
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {teacherApplications.length === 0 && !loadingPageData ? (
+              <p className="rounded-xl border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+                No teacher applications found for this filter.
+              </p>
+            ) : null}
+          </div>
+        </article>
+
+        {portalReady && teacherApplicationModal
+          ? createPortal(teacherApplicationModal, document.body)
+          : null}
+      </>
     );
   }
 

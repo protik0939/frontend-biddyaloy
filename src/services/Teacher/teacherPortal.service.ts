@@ -1,6 +1,6 @@
 export type AttendanceStatus = "PRESENT" | "ABSENT";
 export type TeacherClassworkType = "TASK" | "ASSIGNMENT" | "QUIZ" | "NOTICE";
-export type TeacherApplicationStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type TeacherApplicationStatus = "PENDING" | "SHORTLISTED" | "APPROVED" | "REJECTED";
 
 type ApiSuccess<T> = {
   success: true;
@@ -108,7 +108,38 @@ export interface TeacherPortalProfileResponse {
       shortName: string | null;
     } | null;
   } | null;
+  applicationProfile: TeacherApplicationProfile | null;
   applications: TeacherJobApplication[];
+}
+
+export interface TeacherAcademicRecord {
+  degree: string;
+  institute: string;
+  result: string;
+  year: number;
+}
+
+export interface TeacherExperienceRecord {
+  organization: string;
+  title: string;
+  startDate: string;
+  endDate?: string;
+  responsibilities?: string;
+}
+
+export interface TeacherApplicationProfile {
+  id: string;
+  headline: string;
+  about: string;
+  resumeUrl: string;
+  portfolioUrl: string | null;
+  skills: string[];
+  certifications: string[];
+  academicRecords: TeacherAcademicRecord[];
+  experiences: TeacherExperienceRecord[];
+  isComplete: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface TeacherJobApplication {
@@ -291,6 +322,40 @@ export interface TeacherMarkUpsertPayload {
 export const TeacherPortalService = {
   getProfileOverview() {
     return apiGet<TeacherPortalProfileResponse>("/api/v1/teacher/profile");
+  },
+
+  getApplicationProfile() {
+    return apiGet<TeacherApplicationProfile | null>("/api/v1/teacher/application-profile");
+  },
+
+  createApplicationProfile(payload: {
+    headline: string;
+    about: string;
+    resumeUrl: string;
+    portfolioUrl?: string;
+    skills: string[];
+    certifications?: string[];
+    academicRecords: TeacherAcademicRecord[];
+    experiences: TeacherExperienceRecord[];
+  }) {
+    return apiPost<TeacherApplicationProfile>("/api/v1/teacher/application-profile", payload);
+  },
+
+  updateApplicationProfile(payload: {
+    headline?: string;
+    about?: string;
+    resumeUrl?: string;
+    portfolioUrl?: string;
+    skills?: string[];
+    certifications?: string[];
+    academicRecords?: TeacherAcademicRecord[];
+    experiences?: TeacherExperienceRecord[];
+  }) {
+    return apiPatch<TeacherApplicationProfile>("/api/v1/teacher/application-profile", payload);
+  },
+
+  deleteApplicationProfile() {
+    return apiDelete<{ id: string }>("/api/v1/teacher/application-profile");
   },
 
   applyToTeacherPosting(postingId: string, payload?: { coverLetter?: string }) {

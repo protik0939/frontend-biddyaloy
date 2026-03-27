@@ -184,6 +184,64 @@ export interface Student {
   };
 }
 
+export type TeacherJobApplicationStatus = "PENDING" | "SHORTLISTED" | "APPROVED" | "REJECTED";
+
+export interface TeacherApplicationProfileSummary {
+  id: string;
+  headline: string;
+  about: string;
+  resumeUrl: string;
+  portfolioUrl: string | null;
+  skills: string[];
+  certifications: string[];
+  academicRecords: Array<{
+    degree: string;
+    institute: string;
+    result: string;
+    year: number;
+  }>;
+  experiences: Array<{
+    organization: string;
+    title: string;
+    startDate: string;
+    endDate?: string;
+    responsibilities?: string;
+  }>;
+  isComplete: boolean;
+  updatedAt: string;
+}
+
+export interface DepartmentTeacherJobApplication {
+  id: string;
+  coverLetter: string | null;
+  status: TeacherJobApplicationStatus;
+  institutionResponse: string | null;
+  reviewedAt: string | null;
+  appliedAt: string;
+  createdAt: string;
+  posting: {
+    id: string;
+    title: string;
+    location: string | null;
+  };
+  teacherUser: {
+    id: string;
+    name: string;
+    email: string;
+    accountStatus: string;
+    teacherApplicationProfile: TeacherApplicationProfileSummary | null;
+  };
+  reviewerUser: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+  department: {
+    id: string;
+    fullName: string;
+  } | null;
+}
+
 type ApiSuccess<T> = {
   success: true;
   message?: string;
@@ -455,5 +513,29 @@ export const DepartmentManagementService = {
     return apiPatch<Student>(`/api/v1/department/students/${studentProfileId}`, {
       accountStatus,
     });
+  },
+
+  listTeacherApplications(status?: TeacherJobApplicationStatus) {
+    const query = status ? `?status=${status}` : "";
+    return apiGet<DepartmentTeacherJobApplication[]>(`/api/v1/teacher/applications${query}`);
+  },
+
+  reviewTeacherApplication(
+    applicationId: string,
+    payload: {
+      status: Extract<TeacherJobApplicationStatus, "SHORTLISTED" | "APPROVED" | "REJECTED">;
+      responseMessage?: string;
+      rejectionReason?: string;
+      teacherInitial?: string;
+      teachersId?: string;
+      designation?: string;
+      bio?: string;
+      departmentId?: string;
+    },
+  ) {
+    return apiPatch<DepartmentTeacherJobApplication>(
+      `/api/v1/teacher/applications/${applicationId}/review`,
+      payload,
+    );
   },
 };

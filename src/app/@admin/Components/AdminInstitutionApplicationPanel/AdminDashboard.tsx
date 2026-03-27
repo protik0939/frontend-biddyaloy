@@ -17,6 +17,11 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import ImagebbUploader from "@/Components/ui/ImagebbUploader";
+import DepartmentSectionContent from "@/app/@department/Components/Sections/DepartmentSectionContent";
+import {
+  getDepartmentSidebarItems,
+  type DepartmentSection,
+} from "@/app/@department/Components/Sections/departmentSections";
 import {
   createInstitutionSemester,
   deleteInstitutionSemester,
@@ -97,6 +102,25 @@ export default function AdminDashboard({
   const [profileBloodGroup, setProfileBloodGroup] = useState("");
   const [profileGender, setProfileGender] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [adminAcademicSection, setAdminAcademicSection] = useState<DepartmentSection>("semesters");
+
+  const resolvedInstitutionType =
+    (dashboardSummary?.institution?.type as InstitutionType | undefined) ?? approvedInstitutionType;
+  const isUniversity = resolvedInstitutionType === "UNIVERSITY";
+
+  const mapAcademicTerms = (value: string) => {
+    if (isUniversity) {
+      return value;
+    }
+
+    return value
+      .replaceAll("Department", "Program")
+      .replaceAll("department", "program")
+      .replaceAll("Semester", "Session")
+      .replaceAll("semester", "session")
+      .replaceAll("Batch", "Class")
+      .replaceAll("batch", "class");
+  };
 
   const syncProfileInputs = (summary: InstitutionAdminDashboardSummary) => {
     setProfileName(summary.user?.name ?? "");
@@ -200,9 +224,9 @@ export default function AdminDashboard({
       setSemesterStartDate("");
       setSemesterEndDate("");
       await reloadSemesters();
-      toast.success("Semester created successfully");
+      toast.success(mapAcademicTerms("Semester created successfully"));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to create semester";
+      const message = error instanceof Error ? error.message : mapAcademicTerms("Failed to create semester");
       toast.error(message);
     } finally {
       setCreatingSemester(false);
@@ -280,9 +304,9 @@ export default function AdminDashboard({
 
       onCancelEditSemester();
       await reloadSemesters();
-      toast.success("Semester updated successfully");
+      toast.success(mapAcademicTerms("Semester updated successfully"));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to update semester";
+      const message = error instanceof Error ? error.message : mapAcademicTerms("Failed to update semester");
       toast.error(message);
     } finally {
       setSavingSemesterId("");
@@ -297,9 +321,9 @@ export default function AdminDashboard({
         onCancelEditSemester();
       }
       await reloadSemesters();
-      toast.success("Semester deleted successfully");
+      toast.success(mapAcademicTerms("Semester deleted successfully"));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to delete semester";
+      const message = error instanceof Error ? error.message : mapAcademicTerms("Failed to delete semester");
       toast.error(message);
     } finally {
       setDeletingSemesterId("");
@@ -310,24 +334,32 @@ export default function AdminDashboard({
     () => [
       {
         title: "Academic Workflow",
-        description: "Set up semesters, sections, and class-flow configurations.",
+        description: mapAcademicTerms("Set up semesters, sections, and class-flow configurations."),
         icon: Workflow,
         enabled: true,
+      },
+      {
+        title: isUniversity ? "Department Workspace" : "Program Workspace",
+        description: mapAcademicTerms(
+          "Manage departments, semesters, batches, sections, teachers, students and courses.",
+        ),
+        icon: Layers3,
+        enabled: !isUniversity,
       },
       {
         title: "Faculty Accounts",
         description: "Create faculty admin accounts and assign access credentials.",
         icon: GraduationCap,
-        enabled: approvedInstitutionType === "UNIVERSITY",
+        enabled: isUniversity,
       },
       {
-        title: "Department Accounts",
-        description: "Create department admin accounts for your institution.",
+        title: mapAcademicTerms("Department Accounts"),
+        description: mapAcademicTerms("Create department admin accounts for your institution."),
         icon: Layers3,
-        enabled: approvedInstitutionType === "UNIVERSITY",
+        enabled: isUniversity,
       },
     ],
-    [approvedInstitutionType],
+    [isUniversity],
   );
 
   const dashboardMenuItems: {
@@ -338,18 +370,24 @@ export default function AdminDashboard({
   }[] = [
       { key: "overview", label: "Overview", icon: LayoutDashboard, enabled: true },
       { key: "profile", label: "Profile", icon: UserCircle2, enabled: true },
-      { key: "workflow", label: "Academic Workflow", icon: Workflow, enabled: true },
+      { key: "workflow", label: mapAcademicTerms("Academic Workflow"), icon: Workflow, enabled: true },
+      {
+        key: "academic",
+        label: isUniversity ? "Department Workspace" : "Program Workspace",
+        icon: Layers3,
+        enabled: !isUniversity,
+      },
       {
         key: "faculty",
         label: "Faculties",
         icon: GraduationCap,
-        enabled: approvedInstitutionType === "UNIVERSITY",
+        enabled: isUniversity,
       },
       {
         key: "departments",
-        label: "Departments",
+        label: mapAcademicTerms("Departments"),
         icon: Layers3,
-        enabled: approvedInstitutionType === "UNIVERSITY",
+        enabled: isUniversity,
       },
       { key: "posts", label: "Posts", icon: Megaphone, enabled: true },
       { key: "settings", label: "Settings", icon: Settings2, enabled: true },
@@ -361,12 +399,16 @@ export default function AdminDashboard({
     return (
       <SubAdminAccountForm
         accountType={accountType}
-        disabled={approvedInstitutionType !== "UNIVERSITY"}
-        title={isFaculty ? "Create Faculty Admin Account" : "Create Department Admin Account"}
+        disabled={!isUniversity}
+        title={
+          isFaculty ? "Create Faculty Admin Account" : mapAcademicTerms("Create Department Admin Account")
+        }
         description={
           isFaculty
             ? "Create faculty admin credentials and set up faculty details in one step."
-            : "Create department admin credentials, then create faculty and department in one step."
+            : mapAcademicTerms(
+                "Create department admin credentials, then create faculty and department in one step.",
+              )
         }
         onSubmit={onCreateSubAdmin}
         facultyOptions={faculties}
@@ -521,6 +563,9 @@ export default function AdminDashboard({
                       if (action.title.includes("Faculty")) {
                         setActiveSection("faculty");
                       }
+                      if (action.title.includes("Workspace")) {
+                        setActiveSection("academic");
+                      }
                       if (action.title.includes("Department")) {
                         setActiveSection("departments");
                       }
@@ -640,18 +685,18 @@ export default function AdminDashboard({
 
           {activeSection === "workflow" && (
             <article className="space-y-4 rounded-xl border border-border/70 bg-background/70 p-4">
-              <h3 className="text-base font-semibold">Semester Management</h3>
+              <h3 className="text-base font-semibold">{mapAcademicTerms("Semester Management")}</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Create and review institution-level semesters.
+                {mapAcademicTerms("Create and review institution-level semesters.")}
               </p>
 
               <form className="grid grid-cols-1 gap-3 md:grid-cols-4" onSubmit={onCreateSemester}>
                 <label className="block space-y-1 text-sm">
-                  <span className="font-medium">Semester Name</span>
+                  <span className="font-medium">{mapAcademicTerms("Semester Name")}</span>
                   <input
                     value={semesterName}
                     onChange={(event) => setSemesterName(event.target.value)}
-                    placeholder="Semester name"
+                    placeholder={mapAcademicTerms("Semester name")}
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
                   />
                 </label>
@@ -683,14 +728,14 @@ export default function AdminDashboard({
                   disabled={creatingSemester || !canCreateSemester}
                   className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60 md:mt-6"
                 >
-                  {creatingSemester ? "Creating..." : "Create Semester"}
+                  {creatingSemester ? "Creating..." : mapAcademicTerms("Create Semester")}
                 </button>
               </form>
 
               {loadingSemesters ? (
                 <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading semesters...
+                  {mapAcademicTerms("Loading semesters...")}
                 </div>
               ) : null}
 
@@ -776,10 +821,42 @@ export default function AdminDashboard({
                 ))}
 
                 {!loadingSemesters && semesters.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No semesters created yet.</p>
+                  <p className="text-sm text-muted-foreground">{mapAcademicTerms("No semesters created yet.")}</p>
                 ) : null}
               </div>
             </article>
+          )}
+
+          {activeSection === "academic" && (
+            <div className="space-y-4 rounded-xl border border-border/70 bg-background/70 p-4">
+              <h3 className="text-base font-semibold">
+                {isUniversity ? "Department Workspace" : "Program Workspace"}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {mapAcademicTerms(
+                  "Use one place to manage departments, semesters, batches, sections, courses, teachers, students and applications.",
+                )}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {getDepartmentSidebarItems(isUniversity)
+                  .filter((item) => item.section !== "overview" && item.section !== "profile")
+                  .map((item) => (
+                    <button
+                      key={item.section}
+                      type="button"
+                      onClick={() => setAdminAcademicSection(item.section)}
+                      className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                        adminAcademicSection === item.section
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background text-foreground"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+              </div>
+              <DepartmentSectionContent section={adminAcademicSection} />
+            </div>
           )}
 
           {activeSection === "faculty" && renderAccountSection("FACULTY")}

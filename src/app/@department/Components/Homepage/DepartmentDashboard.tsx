@@ -23,7 +23,7 @@ import {
 } from "@/services/Department/departmentManagement.service";
 
 import {
-  departmentSidebarItems,
+  getDepartmentSidebarItems,
   type DepartmentSection,
 } from "../Sections/departmentSections";
 
@@ -51,6 +51,24 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [summary, setSummary] = useState<DepartmentDashboardSummary | null>(null);
+
+  const isUniversity = summary?.institution?.type === "UNIVERSITY";
+
+  const replaceAcademicTerms = (value: string) => {
+    if (isUniversity) {
+      return value;
+    }
+
+    return value
+      .replaceAll("Department", "Program")
+      .replaceAll("department", "program")
+      .replaceAll("Semester", "Session")
+      .replaceAll("semester", "session")
+      .replaceAll("Batch", "Class")
+      .replaceAll("batch", "class");
+  };
+
+  const sidebarItems = useMemo(() => getDepartmentSidebarItems(isUniversity), [isUniversity]);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,11 +103,11 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
   const overviewStats = useMemo(() => {
     const numberFormatter = new Intl.NumberFormat();
     return overviewConfig.map((item) => ({
-      label: item.label,
+      label: replaceAcademicTerms(item.label),
       value: numberFormatter.format(summary?.stats[item.key] ?? 0),
       Icon: item.Icon,
     }));
-  }, [summary]);
+  }, [summary, isUniversity]);
 
   return (
     <section className="relative min-h-screen bg-background lg:h-screen lg:overflow-hidden">
@@ -136,7 +154,7 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
           </div>
 
           <nav className="space-y-1.5">
-            {departmentSidebarItems.map((item) => {
+            {sidebarItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link
@@ -172,10 +190,14 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
                   Menu
                 </button>
               </div>
-              <p className="text-sm font-medium text-primary">Department Control Center</p>
-              <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Department Dashboard</h1>
+              <p className="text-sm font-medium text-primary">
+                {isUniversity ? "Department" : "Program"} Control Center
+              </p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+                {isUniversity ? "Department" : "Program"} Dashboard
+              </h1>
               <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-                Manage semesters, sections, teachers, students, and courses.
+                {replaceAcademicTerms("Manage semesters, sections, teachers, students, and courses.")}
               </p>
             </div>
             <div className="flex flex-row justify-center gap-3">
@@ -229,7 +251,9 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
                       <article className="rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm lg:col-span-2">
                         <div className="mb-4 flex items-center gap-2">
                           <Bell className="h-4 w-4 text-primary" />
-                          <h2 className="text-base font-semibold sm:text-lg">Department Updates</h2>
+                          <h2 className="text-base font-semibold sm:text-lg">
+                            {isUniversity ? "Department" : "Program"} Updates
+                          </h2>
                         </div>
                         <ul className="space-y-3">
                           {updateNotes.map((item) => (
@@ -284,7 +308,9 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
                       <div className="rounded-xl border border-border/70 bg-background/60 p-4">
                         <p className="text-sm font-medium">Section Management</p>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          Create sections with semester mapping and capacity controls.
+                          {replaceAcademicTerms(
+                            "Create sections with semester mapping and capacity controls.",
+                          )}
                         </p>
                       </div>
                       <div className="rounded-xl border border-border/70 bg-background/60 p-4">

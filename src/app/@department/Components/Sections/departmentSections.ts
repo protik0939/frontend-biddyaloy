@@ -33,11 +33,35 @@ export interface DepartmentSidebarItem {
   Icon: LucideIcon;
 }
 
-export const departmentSidebarItems: DepartmentSidebarItem[] = [
+const replaceAcademicTerms = (value: string, isUniversity: boolean) => {
+  if (isUniversity) {
+    return value;
+  }
+
+  return value
+    .replaceAll("Department", "Program")
+    .replaceAll("department", "program")
+    .replaceAll("Semester", "Session")
+    .replaceAll("semester", "session")
+    .replaceAll("Batch", "Class")
+    .replaceAll("batch", "class");
+};
+
+export const getDepartmentSidebarItems = (isUniversity: boolean): DepartmentSidebarItem[] => [
   { label: "Overview", href: "/", section: "overview", Icon: Home },
   { label: "Profile", href: "/profile", section: "profile", Icon: Settings },
-  { label: "Semesters", href: "/semesters", section: "semesters", Icon: Layers },
-  { label: "Batches", href: "/batches", section: "batches", Icon: Layers },
+  {
+    label: replaceAcademicTerms("Semesters", isUniversity),
+    href: "/semesters",
+    section: "semesters",
+    Icon: Layers,
+  },
+  {
+    label: replaceAcademicTerms("Batches", isUniversity),
+    href: "/batches",
+    section: "batches",
+    Icon: Layers,
+  },
   { label: "Sections", href: "/sections", section: "sections", Icon: SquareStack },
   { label: "Courses", href: "/courses", section: "courses", Icon: BookOpen },
   {

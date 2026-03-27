@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { SearchX } from "lucide-react";
 import Reveal from "@/app/@unauthenticated/Components/HomePage/Sections/Reveal";
 import {
@@ -20,6 +21,7 @@ function getInitials(label: string) {
 }
 
 export default function TeacherApply() {
+  const router = useRouter();
   const [postings, setPostings] = useState<PublicPostingItem[]>([]);
   const [activePosting, setActivePosting] = useState<PublicPostingItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -140,6 +142,7 @@ export default function TeacherApply() {
               </button>
               <button
                 type="button"
+                onClick={() => router.push("/login")}
                 className="rounded-full cursor-pointer bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
               >
                 Apply now
@@ -192,6 +195,7 @@ export default function TeacherApply() {
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <button
                 type="button"
+                onClick={() => router.push("/login")}
                 className="rounded-full cursor-pointer bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
               >
                 Apply now

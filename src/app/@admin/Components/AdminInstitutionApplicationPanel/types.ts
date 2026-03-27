@@ -8,6 +8,7 @@ export type AdminDashboardSection =
   | "overview"
   | "profile"
   | "workflow"
+  | "academic"
   | "faculty"
   | "departments"
   | "posts"

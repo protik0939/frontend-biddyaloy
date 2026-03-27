@@ -23,13 +23,26 @@ export interface Semester {
   endDate: string;
 }
 
+export interface Batch {
+  id: string;
+  name: string;
+  description: string | null;
+}
+
 export interface Section {
   id: string;
   name: string;
   description: string | null;
   sectionCapacity: number | null;
   semesterId: string;
+  batchId: string | null;
   semester?: {
+    id: string;
+    name: string;
+    startDate?: string;
+    endDate?: string;
+  };
+  batch?: {
     id: string;
     name: string;
   };
@@ -64,7 +77,7 @@ export interface CourseRegistration {
   studentProfileId: string;
   teacherProfileId: string;
   sectionId: string;
-  programId: string;
+  programId: string | null;
   semesterId: string;
   course: {
     id: string;
@@ -95,11 +108,15 @@ export interface CourseRegistration {
   section: {
     id: string;
     name: string;
+    batch?: {
+      id: string;
+      name: string;
+    } | null;
   };
   program: {
     id: string;
     title: string;
-  };
+  } | null;
   semester: {
     id: string;
     name: string;
@@ -230,6 +247,22 @@ export const DepartmentManagementService = {
     return apiGet<Semester[]>("/api/v1/department/semesters");
   },
 
+  listBatches() {
+    return apiGet<Batch[]>("/api/v1/department/batches");
+  },
+
+  createBatch(payload: { name: string; description?: string }) {
+    return apiPost<Batch>("/api/v1/department/batches", payload);
+  },
+
+  updateBatch(batchId: string, payload: { name?: string; description?: string }) {
+    return apiPatch<Batch>(`/api/v1/department/batches/${batchId}`, payload);
+  },
+
+  deleteBatch(batchId: string) {
+    return apiDelete<{ id: string }>(`/api/v1/department/batches/${batchId}`);
+  },
+
   createSemester(payload: { name: string; startDate: string; endDate: string }) {
     return apiPost<Semester>("/api/v1/department/semesters", payload);
   },
@@ -241,10 +274,28 @@ export const DepartmentManagementService = {
   createSection(payload: {
     name: string;
     semesterId: string;
+    batchId: string;
     sectionCapacity?: number;
     description?: string;
   }) {
     return apiPost<Section>("/api/v1/department/sections", payload);
+  },
+
+  updateSection(
+    sectionId: string,
+    payload: {
+      name?: string;
+      semesterId?: string;
+      batchId?: string;
+      sectionCapacity?: number;
+      description?: string;
+    },
+  ) {
+    return apiPatch<Section>(`/api/v1/department/sections/${sectionId}`, payload);
+  },
+
+  deleteSection(sectionId: string) {
+    return apiDelete<{ id: string }>(`/api/v1/department/sections/${sectionId}`);
   },
 
   listCourses() {
@@ -294,6 +345,30 @@ export const DepartmentManagementService = {
     semesterId: string;
   }) {
     return apiPost<CourseRegistration>("/api/v1/department/course-registrations", payload);
+  },
+
+  updateCourseRegistration(
+    courseRegistrationId: string,
+    payload: {
+      courseId?: string;
+      studentProfileId?: string;
+      teacherProfileId?: string;
+      sectionId?: string;
+      programId?: string;
+      semesterId?: string;
+      registrationDate?: string;
+    },
+  ) {
+    return apiPatch<CourseRegistration>(
+      `/api/v1/department/course-registrations/${courseRegistrationId}`,
+      payload,
+    );
+  },
+
+  deleteCourseRegistration(courseRegistrationId: string) {
+    return apiDelete<{ id: string }>(
+      `/api/v1/department/course-registrations/${courseRegistrationId}`,
+    );
   },
 
   listTeachers() {

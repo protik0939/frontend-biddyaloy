@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
+  type Batch,
   DepartmentManagementService,
   type AccountStatus,
   type Course,
@@ -47,12 +48,31 @@ export default function DepartmentSectionContent({
   const [semesterEndDate, setSemesterEndDate] = useState("");
   const [creatingSemester, setCreatingSemester] = useState(false);
 
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [batchName, setBatchName] = useState("");
+  const [batchDescription, setBatchDescription] = useState("");
+  const [creatingBatch, setCreatingBatch] = useState(false);
+  const [editingBatchId, setEditingBatchId] = useState("");
+  const [editingBatchName, setEditingBatchName] = useState("");
+  const [editingBatchDescription, setEditingBatchDescription] = useState("");
+  const [updatingBatchId, setUpdatingBatchId] = useState("");
+  const [deletingBatchId, setDeletingBatchId] = useState("");
+
   const [sections, setSections] = useState<Section[]>([]);
   const [sectionName, setSectionName] = useState("");
   const [sectionDescription, setSectionDescription] = useState("");
   const [sectionSemesterId, setSectionSemesterId] = useState("");
+  const [sectionBatchId, setSectionBatchId] = useState("");
   const [sectionCapacity, setSectionCapacity] = useState("");
   const [creatingSection, setCreatingSection] = useState(false);
+  const [editingSectionId, setEditingSectionId] = useState("");
+  const [editingSectionName, setEditingSectionName] = useState("");
+  const [editingSectionSemesterId, setEditingSectionSemesterId] = useState("");
+  const [editingSectionBatchId, setEditingSectionBatchId] = useState("");
+  const [editingSectionCapacity, setEditingSectionCapacity] = useState("");
+  const [editingSectionDescription, setEditingSectionDescription] = useState("");
+  const [updatingSectionId, setUpdatingSectionId] = useState("");
+  const [deletingSectionId, setDeletingSectionId] = useState("");
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [courseCode, setCourseCode] = useState("");
@@ -70,11 +90,21 @@ export default function DepartmentSectionContent({
 
   const [courseRegistrations, setCourseRegistrations] = useState<CourseRegistration[]>([]);
   const [registrationSemesterId, setRegistrationSemesterId] = useState("");
+  const [registrationBatchId, setRegistrationBatchId] = useState("");
   const [registrationSectionId, setRegistrationSectionId] = useState("");
   const [registrationCourseId, setRegistrationCourseId] = useState("");
   const [registrationTeacherProfileId, setRegistrationTeacherProfileId] = useState("");
   const [registrationStudentProfileId, setRegistrationStudentProfileId] = useState("");
   const [creatingRegistration, setCreatingRegistration] = useState(false);
+  const [editingCourseRegistrationId, setEditingCourseRegistrationId] = useState("");
+  const [editingRegistrationSemesterId, setEditingRegistrationSemesterId] = useState("");
+  const [editingRegistrationBatchId, setEditingRegistrationBatchId] = useState("");
+  const [editingRegistrationSectionId, setEditingRegistrationSectionId] = useState("");
+  const [editingRegistrationCourseId, setEditingRegistrationCourseId] = useState("");
+  const [editingRegistrationTeacherProfileId, setEditingRegistrationTeacherProfileId] = useState("");
+  const [editingRegistrationStudentProfileId, setEditingRegistrationStudentProfileId] = useState("");
+  const [updatingCourseRegistrationId, setUpdatingCourseRegistrationId] = useState("");
+  const [deletingCourseRegistrationId, setDeletingCourseRegistrationId] = useState("");
 
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [teacherName, setTeacherName] = useState("");
@@ -100,9 +130,15 @@ export default function DepartmentSectionContent({
     Boolean(semesterStartDate) &&
     Boolean(semesterEndDate);
 
+  const canCreateBatch = useMemo(() => batchName.trim().length >= 1, [batchName]);
+
   const canCreateSection = useMemo(() => {
-    return sectionName.trim().length >= 1 && sectionSemesterId.trim().length > 0;
-  }, [sectionName, sectionSemesterId]);
+    return (
+      sectionName.trim().length >= 1 &&
+      sectionSemesterId.trim().length > 0 &&
+      sectionBatchId.trim().length > 0
+    );
+  }, [sectionBatchId, sectionName, sectionSemesterId]);
 
   const canCreateCourse = useMemo(() => {
     if (courseCode.trim().length < 2 || courseTitle.trim().length < 2) {
@@ -146,27 +182,63 @@ export default function DepartmentSectionContent({
   }, [studentEmail, studentId, studentInitial, studentName, studentPassword]);
 
   const filteredSectionsForRegistration = useMemo(() => {
-    if (!registrationSemesterId) {
+    if (!registrationSemesterId && !registrationBatchId) {
       return sections;
     }
 
-    return sections.filter((item) => item.semesterId === registrationSemesterId);
-  }, [registrationSemesterId, sections]);
+    return sections.filter(
+      (item) =>
+        (!registrationSemesterId || item.semesterId === registrationSemesterId) &&
+        (!registrationBatchId || item.batchId === registrationBatchId),
+    );
+  }, [registrationBatchId, registrationSemesterId, sections]);
 
   const canCreateCourseRegistration = useMemo(() => {
     return (
       Boolean(registrationSemesterId) &&
+      Boolean(registrationBatchId) &&
       Boolean(registrationSectionId) &&
       Boolean(registrationCourseId) &&
       Boolean(registrationTeacherProfileId) &&
       Boolean(registrationStudentProfileId)
     );
   }, [
+    registrationBatchId,
     registrationCourseId,
     registrationSectionId,
     registrationSemesterId,
     registrationStudentProfileId,
     registrationTeacherProfileId,
+  ]);
+
+  const filteredSectionsForEditingRegistration = useMemo(() => {
+    if (!editingRegistrationSemesterId && !editingRegistrationBatchId) {
+      return sections;
+    }
+
+    return sections.filter(
+      (item) =>
+        (!editingRegistrationSemesterId || item.semesterId === editingRegistrationSemesterId) &&
+        (!editingRegistrationBatchId || item.batchId === editingRegistrationBatchId),
+    );
+  }, [editingRegistrationBatchId, editingRegistrationSemesterId, sections]);
+
+  const canUpdateCourseRegistration = useMemo(() => {
+    return (
+      Boolean(editingRegistrationSemesterId) &&
+      Boolean(editingRegistrationBatchId) &&
+      Boolean(editingRegistrationSectionId) &&
+      Boolean(editingRegistrationCourseId) &&
+      Boolean(editingRegistrationTeacherProfileId) &&
+      Boolean(editingRegistrationStudentProfileId)
+    );
+  }, [
+    editingRegistrationBatchId,
+    editingRegistrationCourseId,
+    editingRegistrationSectionId,
+    editingRegistrationSemesterId,
+    editingRegistrationStudentProfileId,
+    editingRegistrationTeacherProfileId,
   ]);
 
   const reloadSemesters = async () => {
@@ -177,6 +249,17 @@ export default function DepartmentSectionContent({
     }
     if (!registrationSemesterId && data.length > 0) {
       setRegistrationSemesterId(data[0].id);
+    }
+  };
+
+  const reloadBatches = async () => {
+    const data = await DepartmentManagementService.listBatches();
+    setBatches(data);
+    if (!sectionBatchId && data.length > 0) {
+      setSectionBatchId(data[0].id);
+    }
+    if (!registrationBatchId && data.length > 0) {
+      setRegistrationBatchId(data[0].id);
     }
   };
 
@@ -230,8 +313,12 @@ export default function DepartmentSectionContent({
           await reloadSemesters();
         }
 
+        if (section === "batches") {
+          await reloadBatches();
+        }
+
         if (section === "sections") {
-          await Promise.all([reloadSemesters(), reloadSections()]);
+          await Promise.all([reloadSemesters(), reloadBatches(), reloadSections()]);
         }
 
         if (section === "courses") {
@@ -249,6 +336,7 @@ export default function DepartmentSectionContent({
         if (section === "courseRegistrations") {
           await Promise.all([
             reloadSemesters(),
+            reloadBatches(),
             reloadSections(),
             reloadCourses(),
             reloadTeachers(),
@@ -279,6 +367,18 @@ export default function DepartmentSectionContent({
   }, [section]);
 
   useEffect(() => {
+    if (!sectionBatchId && batches.length > 0) {
+      setSectionBatchId(batches[0].id);
+    }
+  }, [batches, sectionBatchId]);
+
+  useEffect(() => {
+    if (!registrationBatchId && batches.length > 0) {
+      setRegistrationBatchId(batches[0].id);
+    }
+  }, [batches, registrationBatchId]);
+
+  useEffect(() => {
     if (!registrationTeacherProfileId && teachers.length > 0) {
       setRegistrationTeacherProfileId(teachers[0].id);
     }
@@ -305,6 +405,41 @@ export default function DepartmentSectionContent({
       setRegistrationSectionId(filteredSectionsForRegistration[0].id);
     }
   }, [filteredSectionsForRegistration, registrationSectionId]);
+
+  useEffect(() => {
+    if (!editingCourseRegistrationId) {
+      return;
+    }
+
+    if (!editingRegistrationBatchId && batches.length > 0) {
+      setEditingRegistrationBatchId(batches[0].id);
+    }
+  }, [batches, editingCourseRegistrationId, editingRegistrationBatchId]);
+
+  useEffect(() => {
+    if (!editingCourseRegistrationId) {
+      return;
+    }
+
+    if (filteredSectionsForEditingRegistration.length === 0) {
+      if (editingRegistrationSectionId) {
+        setEditingRegistrationSectionId("");
+      }
+      return;
+    }
+
+    const selectedExists = filteredSectionsForEditingRegistration.some(
+      (item) => item.id === editingRegistrationSectionId,
+    );
+    if (!selectedExists) {
+      setEditingRegistrationSectionId(filteredSectionsForEditingRegistration[0].id);
+    }
+  }, [
+    editingCourseRegistrationId,
+    editingRegistrationBatchId,
+    editingRegistrationSectionId,
+    filteredSectionsForEditingRegistration,
+  ]);
 
   useEffect(() => {
     if (courses.length === 0) {
@@ -377,6 +512,85 @@ export default function DepartmentSectionContent({
     }
   };
 
+  const onCreateBatch = async (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+
+    if (!canCreateBatch) {
+      toast.warning("Provide batch name");
+      return;
+    }
+
+    setCreatingBatch(true);
+    try {
+      await DepartmentManagementService.createBatch({
+        name: batchName.trim(),
+        description: batchDescription.trim() || undefined,
+      });
+
+      setBatchName("");
+      setBatchDescription("");
+      await reloadBatches();
+      toast.success("Batch created successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to create batch";
+      toast.error(message);
+    } finally {
+      setCreatingBatch(false);
+    }
+  };
+
+  const onStartBatchEdit = (batch: Batch) => {
+    setEditingBatchId(batch.id);
+    setEditingBatchName(batch.name);
+    setEditingBatchDescription(batch.description ?? "");
+  };
+
+  const onCancelBatchEdit = () => {
+    setEditingBatchId("");
+    setEditingBatchName("");
+    setEditingBatchDescription("");
+  };
+
+  const onUpdateBatch = async (batchId: string) => {
+    if (!editingBatchName.trim()) {
+      toast.warning("Provide batch name");
+      return;
+    }
+
+    setUpdatingBatchId(batchId);
+    try {
+      await DepartmentManagementService.updateBatch(batchId, {
+        name: editingBatchName.trim(),
+        description: editingBatchDescription.trim() || undefined,
+      });
+      await reloadBatches();
+      onCancelBatchEdit();
+      toast.success("Batch updated successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update batch";
+      toast.error(message);
+    } finally {
+      setUpdatingBatchId("");
+    }
+  };
+
+  const onDeleteBatch = async (batchId: string) => {
+    setDeletingBatchId(batchId);
+    try {
+      await DepartmentManagementService.deleteBatch(batchId);
+      await reloadBatches();
+      if (editingBatchId === batchId) {
+        onCancelBatchEdit();
+      }
+      toast.success("Batch deleted successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete batch";
+      toast.error(message);
+    } finally {
+      setDeletingBatchId("");
+    }
+  };
+
   const onCreateSection = async (event: { preventDefault: () => void }) => {
     event.preventDefault();
 
@@ -390,11 +604,17 @@ export default function DepartmentSectionContent({
       return;
     }
 
+    if (!sectionBatchId.trim()) {
+      toast.warning("Select a batch");
+      return;
+    }
+
     setCreatingSection(true);
     try {
       await DepartmentManagementService.createSection({
         name: sectionName.trim(),
         semesterId: sectionSemesterId,
+        batchId: sectionBatchId,
         description: sectionDescription.trim() || undefined,
         sectionCapacity: sectionCapacity.trim() ? Number(sectionCapacity) : undefined,
       });
@@ -409,6 +629,85 @@ export default function DepartmentSectionContent({
       toast.error(message);
     } finally {
       setCreatingSection(false);
+    }
+  };
+
+  const onStartSectionEdit = (item: Section) => {
+    setEditingSectionId(item.id);
+    setEditingSectionName(item.name);
+    setEditingSectionSemesterId(item.semesterId);
+    setEditingSectionBatchId(item.batchId ?? "");
+    setEditingSectionCapacity(item.sectionCapacity?.toString() ?? "");
+    setEditingSectionDescription(item.description ?? "");
+  };
+
+  const onCancelSectionEdit = () => {
+    setEditingSectionId("");
+    setEditingSectionName("");
+    setEditingSectionSemesterId("");
+    setEditingSectionBatchId("");
+    setEditingSectionCapacity("");
+    setEditingSectionDescription("");
+  };
+
+  const onUpdateSection = async (sectionId: string) => {
+    if (!editingSectionName.trim()) {
+      toast.warning("Provide section name");
+      return;
+    }
+
+    if (!editingSectionSemesterId.trim()) {
+      toast.warning("Select a semester");
+      return;
+    }
+
+    if (!editingSectionBatchId.trim()) {
+      toast.warning("Select a batch");
+      return;
+    }
+
+    if (editingSectionCapacity.trim()) {
+      const numericCapacity = Number(editingSectionCapacity);
+      if (!Number.isInteger(numericCapacity) || numericCapacity <= 0 || numericCapacity > 500) {
+        toast.warning("Capacity must be an integer between 1 and 500");
+        return;
+      }
+    }
+
+    setUpdatingSectionId(sectionId);
+    try {
+      await DepartmentManagementService.updateSection(sectionId, {
+        name: editingSectionName.trim(),
+        semesterId: editingSectionSemesterId,
+        batchId: editingSectionBatchId,
+        sectionCapacity: editingSectionCapacity.trim() ? Number(editingSectionCapacity) : undefined,
+        description: editingSectionDescription.trim() || undefined,
+      });
+      await reloadSections();
+      onCancelSectionEdit();
+      toast.success("Section updated successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update section";
+      toast.error(message);
+    } finally {
+      setUpdatingSectionId("");
+    }
+  };
+
+  const onDeleteSection = async (sectionId: string) => {
+    setDeletingSectionId(sectionId);
+    try {
+      await DepartmentManagementService.deleteSection(sectionId);
+      await reloadSections();
+      if (editingSectionId === sectionId) {
+        onCancelSectionEdit();
+      }
+      toast.success("Section deleted successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete section";
+      toast.error(message);
+    } finally {
+      setDeletingSectionId("");
     }
   };
 
@@ -609,7 +908,7 @@ export default function DepartmentSectionContent({
     event.preventDefault();
 
     if (!canCreateCourseRegistration) {
-      toast.warning("Select semester, section, program, course, teacher and student");
+      toast.warning("Select semester, batch, section, course, teacher and student");
       return;
     }
 
@@ -631,6 +930,72 @@ export default function DepartmentSectionContent({
       toast.error(message);
     } finally {
       setCreatingRegistration(false);
+    }
+  };
+
+  const onStartCourseRegistrationEdit = (item: CourseRegistration) => {
+    setEditingCourseRegistrationId(item.id);
+    setEditingRegistrationSemesterId(item.semesterId);
+    setEditingRegistrationBatchId(item.section.batch?.id ?? "");
+    setEditingRegistrationSectionId(item.sectionId);
+    setEditingRegistrationCourseId(item.courseId);
+    setEditingRegistrationTeacherProfileId(item.teacherProfileId);
+    setEditingRegistrationStudentProfileId(item.studentProfileId);
+  };
+
+  const onCancelCourseRegistrationEdit = () => {
+    setEditingCourseRegistrationId("");
+    setEditingRegistrationSemesterId("");
+    setEditingRegistrationBatchId("");
+    setEditingRegistrationSectionId("");
+    setEditingRegistrationCourseId("");
+    setEditingRegistrationTeacherProfileId("");
+    setEditingRegistrationStudentProfileId("");
+  };
+
+  const onUpdateCourseRegistration = async (courseRegistrationId: string) => {
+    if (!canUpdateCourseRegistration) {
+      toast.warning("Select semester, batch, section, course, teacher and student");
+      return;
+    }
+
+    setUpdatingCourseRegistrationId(courseRegistrationId);
+    try {
+      await DepartmentManagementService.updateCourseRegistration(courseRegistrationId, {
+        semesterId: editingRegistrationSemesterId,
+        sectionId: editingRegistrationSectionId,
+        courseId: editingRegistrationCourseId,
+        teacherProfileId: editingRegistrationTeacherProfileId,
+        studentProfileId: editingRegistrationStudentProfileId,
+      });
+
+      await reloadCourseRegistrations();
+      onCancelCourseRegistrationEdit();
+      toast.success("Course registration updated successfully");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to update course registration";
+      toast.error(message);
+    } finally {
+      setUpdatingCourseRegistrationId("");
+    }
+  };
+
+  const onDeleteCourseRegistration = async (courseRegistrationId: string) => {
+    setDeletingCourseRegistrationId(courseRegistrationId);
+    try {
+      await DepartmentManagementService.deleteCourseRegistration(courseRegistrationId);
+      await reloadCourseRegistrations();
+      if (editingCourseRegistrationId === courseRegistrationId) {
+        onCancelCourseRegistrationEdit();
+      }
+      toast.success("Course registration deleted successfully");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to delete course registration";
+      toast.error(message);
+    } finally {
+      setDeletingCourseRegistrationId("");
     }
   };
 
@@ -766,6 +1131,108 @@ export default function DepartmentSectionContent({
     );
   }
 
+  if (section === "batches") {
+    return (
+      <article className="space-y-4 rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
+        <h2 className="text-lg font-semibold">Batch Management</h2>
+        {loadingIndicator}
+
+        <form className="space-y-3" onSubmit={onCreateBatch}>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <input
+              value={batchName}
+              onChange={(event) => setBatchName(event.target.value)}
+              placeholder="Batch name"
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            />
+            <input
+              value={batchDescription}
+              onChange={(event) => setBatchDescription(event.target.value)}
+              placeholder="Description (optional)"
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={creatingBatch || !canCreateBatch}
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            {creatingBatch ? "Creating..." : "Create Batch"}
+          </button>
+        </form>
+
+        <div className="space-y-2">
+          {batches.map((item) => (
+            <div key={item.id} className="rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-sm">
+              {editingBatchId === item.id ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <input
+                      value={editingBatchName}
+                      onChange={(event) => setEditingBatchName(event.target.value)}
+                      className="rounded-lg border border-border bg-background px-2 py-1"
+                      placeholder="Batch name"
+                    />
+                    <input
+                      value={editingBatchDescription}
+                      onChange={(event) => setEditingBatchDescription(event.target.value)}
+                      className="rounded-lg border border-border bg-background px-2 py-1"
+                      placeholder="Description"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void onUpdateBatch(item.id)}
+                      disabled={updatingBatchId === item.id}
+                      className="rounded-lg bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+                    >
+                      {updatingBatchId === item.id ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onCancelBatchEdit}
+                      className="rounded-lg border border-border bg-background px-3 py-1 text-xs font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="font-medium">{item.name}</p>
+                  <p className="text-muted-foreground">{item.description ?? "-"}</p>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onStartBatchEdit(item)}
+                      className="rounded-lg border border-border bg-background px-3 py-1 text-xs font-medium"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void onDeleteBatch(item.id)}
+                      disabled={deletingBatchId === item.id}
+                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs font-medium text-red-700 disabled:opacity-60"
+                    >
+                      {deletingBatchId === item.id ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+          {batches.length === 0 && !loadingPageData ? (
+            <p className="rounded-xl border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+              No batches found.
+            </p>
+          ) : null}
+        </div>
+      </article>
+    );
+  }
+
   if (section === "sections") {
     return (
       <article className="space-y-4 rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
@@ -773,7 +1240,7 @@ export default function DepartmentSectionContent({
         {loadingIndicator}
 
         <form className="space-y-3" onSubmit={onCreateSection}>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <input
               value={sectionName}
               onChange={(event) => setSectionName(event.target.value)}
@@ -789,6 +1256,18 @@ export default function DepartmentSectionContent({
               {semesters.map((item) => (
                 <option key={item.id} value={item.id}>
                   {formatSeasonYear(item)}
+                </option>
+              ))}
+            </select>
+            <select
+              value={sectionBatchId}
+              onChange={(event) => setSectionBatchId(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select batch</option>
+              {batches.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
                 </option>
               ))}
             </select>
@@ -819,10 +1298,97 @@ export default function DepartmentSectionContent({
         <div className="space-y-2">
           {sections.map((item) => (
             <div key={item.id} className="rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-sm">
-              <p className="font-medium">{item.name}</p>
-              <p className="text-muted-foreground">
-                Semester: {item.semester?.name ?? "-"} | Capacity: {item.sectionCapacity ?? "-"}
-              </p>
+              {editingSectionId === item.id ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                    <input
+                      value={editingSectionName}
+                      onChange={(event) => setEditingSectionName(event.target.value)}
+                      className="rounded-lg border border-border bg-background px-2 py-1"
+                      placeholder="Section name"
+                    />
+                    <select
+                      value={editingSectionSemesterId}
+                      onChange={(event) => setEditingSectionSemesterId(event.target.value)}
+                      className="rounded-lg border border-border bg-background px-2 py-1"
+                    >
+                      <option value="">Select semester</option>
+                      {semesters.map((semester) => (
+                        <option key={semester.id} value={semester.id}>
+                          {formatSeasonYear(semester)}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={editingSectionBatchId}
+                      onChange={(event) => setEditingSectionBatchId(event.target.value)}
+                      className="rounded-lg border border-border bg-background px-2 py-1"
+                    >
+                      <option value="">Select batch</option>
+                      {batches.map((batch) => (
+                        <option key={batch.id} value={batch.id}>
+                          {batch.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <input
+                      value={editingSectionCapacity}
+                      onChange={(event) => setEditingSectionCapacity(event.target.value)}
+                      className="rounded-lg border border-border bg-background px-2 py-1"
+                      placeholder="Capacity"
+                    />
+                    <input
+                      value={editingSectionDescription}
+                      onChange={(event) => setEditingSectionDescription(event.target.value)}
+                      className="rounded-lg border border-border bg-background px-2 py-1"
+                      placeholder="Description"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void onUpdateSection(item.id)}
+                      disabled={updatingSectionId === item.id}
+                      className="rounded-lg bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+                    >
+                      {updatingSectionId === item.id ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onCancelSectionEdit}
+                      className="rounded-lg border border-border bg-background px-3 py-1 text-xs font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="font-medium">{item.name}</p>
+                  <p className="text-muted-foreground">
+                    Semester: {item.semester?.name ?? "-"} | Batch: {item.batch?.name ?? "-"} | Capacity: {item.sectionCapacity ?? "-"}
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onStartSectionEdit(item)}
+                      className="rounded-lg border border-border bg-background px-3 py-1 text-xs font-medium"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void onDeleteSection(item.id)}
+                      disabled={deletingSectionId === item.id}
+                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs font-medium text-red-700 disabled:opacity-60"
+                    >
+                      {deletingSectionId === item.id ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -986,6 +1552,19 @@ export default function DepartmentSectionContent({
             </select>
 
             <select
+              value={registrationBatchId}
+              onChange={(event) => setRegistrationBatchId(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select batch</option>
+              {batches.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+
+            <select
               value={registrationSectionId}
               onChange={(event) => setRegistrationSectionId(event.target.value)}
               className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
@@ -1050,20 +1629,142 @@ export default function DepartmentSectionContent({
         <div className="space-y-2">
           {courseRegistrations.map((item) => (
             <div key={item.id} className="rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-sm">
-              <p className="font-medium">
-                {item.course.courseCode} - {item.course.courseTitle}
-              </p>
-              <p className="text-muted-foreground">
-                Student: {item.studentProfile.user.name} ({item.studentProfile.studentsId}) | Teacher: {" "}
-                {item.teacherProfile.user.name} ({item.teacherProfile.teacherInitial})
-              </p>
-              <p className="text-muted-foreground">
-                Program: {item.program.title} | Section: {item.section.name} | Semester:{" "}
-                {formatSeasonYear(item.semester)}
-              </p>
-              <p className="text-muted-foreground">
-                Registered: {formatDateDDMMYYYY(item.registrationDate)}
-              </p>
+              {editingCourseRegistrationId === item.id ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
+                    <select
+                      value={editingRegistrationSemesterId}
+                      onChange={(event) => setEditingRegistrationSemesterId(event.target.value)}
+                      className="rounded-lg border border-border bg-background px-2 py-1"
+                    >
+                      <option value="">Select semester</option>
+                      {semesters.map((semester) => (
+                        <option key={semester.id} value={semester.id}>
+                          {formatSeasonYear(semester)}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={editingRegistrationBatchId}
+                      onChange={(event) => setEditingRegistrationBatchId(event.target.value)}
+                      className="rounded-lg border border-border bg-background px-2 py-1"
+                    >
+                      <option value="">Select batch</option>
+                      {batches.map((batchItem) => (
+                        <option key={batchItem.id} value={batchItem.id}>
+                          {batchItem.name}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={editingRegistrationSectionId}
+                      onChange={(event) => setEditingRegistrationSectionId(event.target.value)}
+                      className="rounded-lg border border-border bg-background px-2 py-1"
+                    >
+                      <option value="">Select section</option>
+                      {filteredSectionsForEditingRegistration.map((sectionItem) => (
+                        <option key={sectionItem.id} value={sectionItem.id}>
+                          {sectionItem.name}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={editingRegistrationCourseId}
+                      onChange={(event) => setEditingRegistrationCourseId(event.target.value)}
+                      className="rounded-lg border border-border bg-background px-2 py-1"
+                    >
+                      <option value="">Select course</option>
+                      {courses.map((courseItem) => (
+                        <option key={courseItem.id} value={courseItem.id}>
+                          {courseItem.courseCode} - {courseItem.courseTitle}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={editingRegistrationTeacherProfileId}
+                      onChange={(event) =>
+                        setEditingRegistrationTeacherProfileId(event.target.value)
+                      }
+                      className="rounded-lg border border-border bg-background px-2 py-1"
+                    >
+                      <option value="">Select teacher</option>
+                      {teachers.map((teacherItem) => (
+                        <option key={teacherItem.id} value={teacherItem.id}>
+                          {teacherItem.user.name} ({teacherItem.teacherInitial})
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={editingRegistrationStudentProfileId}
+                      onChange={(event) =>
+                        setEditingRegistrationStudentProfileId(event.target.value)
+                      }
+                      className="rounded-lg border border-border bg-background px-2 py-1"
+                    >
+                      <option value="">Select student</option>
+                      {students.map((studentItem) => (
+                        <option key={studentItem.id} value={studentItem.id}>
+                          {studentItem.user.name} ({studentItem.studentsId})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void onUpdateCourseRegistration(item.id)}
+                      disabled={
+                        updatingCourseRegistrationId === item.id || !canUpdateCourseRegistration
+                      }
+                      className="rounded-lg bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+                    >
+                      {updatingCourseRegistrationId === item.id ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onCancelCourseRegistrationEdit}
+                      className="rounded-lg border border-border bg-background px-3 py-1 text-xs font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="font-medium">
+                    {item.course.courseCode} - {item.course.courseTitle}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Student: {item.studentProfile.user.name} ({item.studentProfile.studentsId}) | Teacher:{" "}
+                    {item.teacherProfile.user.name} ({item.teacherProfile.teacherInitial})
+                  </p>
+                  <p className="text-muted-foreground">
+                    Program: {item.program?.title ?? "-"} | Batch: {item.section.batch?.name ?? "-"} | Section: {item.section.name} | Semester:{" "}
+                    {formatSeasonYear(item.semester)}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Registered: {formatDateDDMMYYYY(item.registrationDate)}
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onStartCourseRegistrationEdit(item)}
+                      className="rounded-lg border border-border bg-background px-3 py-1 text-xs font-medium"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void onDeleteCourseRegistration(item.id)}
+                      disabled={deletingCourseRegistrationId === item.id}
+                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs font-medium text-red-700 disabled:opacity-60"
+                    >
+                      {deletingCourseRegistrationId === item.id ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
           {courseRegistrations.length === 0 && !loadingPageData ? (

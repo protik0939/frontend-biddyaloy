@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import LogoutButton from "@/Components/LogoutButton";
 import ThemeToggle from "@/Components/ThemeToggle";
+import UserIdentityBadge from "@/Components/UserIdentityBadge";
 import {
   type TeacherPortalProfileResponse,
   TeacherPortalService,
@@ -168,6 +169,13 @@ export default function TeacherDashboard({ section }: Readonly<TeacherDashboardP
               <p className="text-sm text-muted-foreground">Apply to an institution to start teaching workflows.</p>
             </div>
             <div className="flex gap-2">
+              <UserIdentityBadge
+                userName={profileState?.user.name}
+                userEmail={profileState?.user.email}
+                userImage={profileState?.user.image}
+                institutionName={null}
+                compact
+              />
               <ThemeToggle />
               <LogoutButton />
             </div>
@@ -272,6 +280,15 @@ export default function TeacherDashboard({ section }: Readonly<TeacherDashboardP
               </p>
             </div>
             <div className="flex flex-row justify-center gap-3">
+              <UserIdentityBadge
+                userName={profileState?.user.name}
+                userEmail={profileState?.user.email}
+                userImage={profileState?.user.image}
+                institutionName={profileState?.profile?.institution.name}
+                institutionShortName={profileState?.profile?.institution.shortName}
+                institutionLogo={profileState?.profile?.institution.institutionLogo}
+                compact
+              />
               <ThemeToggle />
               <LogoutButton />
             </div>

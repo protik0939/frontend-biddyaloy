@@ -14,6 +14,47 @@ export interface DepartmentProfile {
   institutionId: string;
   facultyId: string | null;
   faculty: { fullName: string } | null;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    image: string | null;
+    contactNo?: string | null;
+    presentAddress?: string | null;
+    permanentAddress?: string | null;
+    bloodGroup?: string | null;
+    gender?: string | null;
+  } | null;
+}
+
+export interface DepartmentDashboardSummary {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    image: string | null;
+  } | null;
+  institution: {
+    id: string;
+    name: string;
+    shortName: string | null;
+    institutionLogo: string | null;
+  } | null;
+  department: {
+    id: string;
+    fullName: string;
+    shortName: string | null;
+    description: string | null;
+  } | null;
+  stats: {
+    totalSemesters: number;
+    totalSections: number;
+    totalTeachers: number;
+    totalCourses: number;
+    totalStudents: number;
+    pendingTeacherApplications: number;
+    pendingStudentApplications: number;
+  };
 }
 
 export interface Semester {
@@ -86,7 +127,6 @@ export interface CourseRegistration {
   };
   studentProfile: {
     id: string;
-    studentInitial: string;
     studentsId: string;
     user: {
       id: string;
@@ -173,7 +213,6 @@ export interface Teacher {
 
 export interface Student {
   id: string;
-  studentInitial: string;
   studentsId: string;
   bio: string | null;
   user: {
@@ -185,6 +224,11 @@ export interface Student {
 }
 
 export type TeacherJobApplicationStatus = "PENDING" | "SHORTLISTED" | "APPROVED" | "REJECTED";
+export type StudentAdmissionApplicationStatus =
+  | "PENDING"
+  | "SHORTLISTED"
+  | "APPROVED"
+  | "REJECTED";
 
 export interface TeacherApplicationProfileSummary {
   id: string;
@@ -239,6 +283,55 @@ export interface DepartmentTeacherJobApplication {
   department: {
     id: string;
     fullName: string;
+  } | null;
+}
+
+export interface StudentApplicationProfileSummary {
+  id: string;
+  headline: string;
+  about: string;
+  documentUrls: string[];
+  academicRecords: Array<{
+    examName: string;
+    institute: string;
+    result: string;
+    year: number;
+  }>;
+  isComplete: boolean;
+  updatedAt: string;
+}
+
+export interface DepartmentStudentAdmissionApplication {
+  id: string;
+  coverLetter: string | null;
+  status: StudentAdmissionApplicationStatus;
+  institutionResponse: string | null;
+  reviewedAt: string | null;
+  appliedAt: string;
+  createdAt: string;
+  posting: {
+    id: string;
+    title: string;
+    location: string | null;
+    summary?: string;
+    departmentId?: string | null;
+  };
+  studentUser: {
+    id: string;
+    name: string;
+    email: string;
+    accountStatus: string;
+    studentApplicationProfile: StudentApplicationProfileSummary | null;
+  };
+  reviewerUser: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+  studentProfile: {
+    id: string;
+    studentsId: string;
+    bio: string | null;
   } | null;
 }
 
@@ -321,14 +414,25 @@ async function apiDelete<T>(path: string) {
 }
 
 export const DepartmentManagementService = {
+  getDashboardSummary() {
+    return apiGet<DepartmentDashboardSummary>("/api/v1/department/dashboard-summary");
+  },
+
   getProfile() {
     return apiGet<DepartmentProfile>("/api/v1/department/profile");
   },
 
   updateProfile(payload: {
-    fullName: string;
+    fullName?: string;
     shortName?: string;
     description?: string;
+    name?: string;
+    image?: string;
+    contactNo?: string;
+    presentAddress?: string;
+    permanentAddress?: string;
+    bloodGroup?: string;
+    gender?: string;
   }) {
     return apiPatch<DepartmentProfile>("/api/v1/department/profile", payload);
   },
@@ -502,7 +606,6 @@ export const DepartmentManagementService = {
     name: string;
     email: string;
     password: string;
-    studentInitial: string;
     studentsId: string;
     bio?: string;
   }) {
@@ -535,6 +638,29 @@ export const DepartmentManagementService = {
   ) {
     return apiPatch<DepartmentTeacherJobApplication>(
       `/api/v1/teacher/applications/${applicationId}/review`,
+      payload,
+    );
+  },
+
+  listStudentApplications(status?: StudentAdmissionApplicationStatus) {
+    const query = status ? `?status=${status}` : "";
+    return apiGet<DepartmentStudentAdmissionApplication[]>(
+      `/api/v1/department/student-applications${query}`,
+    );
+  },
+
+  reviewStudentApplication(
+    applicationId: string,
+    payload: {
+      status: Extract<StudentAdmissionApplicationStatus, "SHORTLISTED" | "APPROVED" | "REJECTED">;
+      responseMessage?: string;
+      rejectionReason?: string;
+      studentsId?: string;
+      bio?: string;
+    },
+  ) {
+    return apiPatch<DepartmentStudentAdmissionApplication>(
+      `/api/v1/department/student-applications/${applicationId}/review`,
       payload,
     );
   },

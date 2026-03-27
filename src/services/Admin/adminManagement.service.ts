@@ -46,6 +46,46 @@ export interface InstitutionSemester {
   institutionId: string;
 }
 
+export interface InstitutionAdminDashboardSummary {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    image: string | null;
+    contactNo: string | null;
+    presentAddress: string | null;
+    permanentAddress: string | null;
+    bloodGroup: string | null;
+    gender: string | null;
+  } | null;
+  institution: {
+    id: string;
+    name: string;
+    shortName: string | null;
+    institutionLogo: string | null;
+    type: string;
+  } | null;
+  stats: {
+    totalFaculties: number;
+    totalDepartments: number;
+    totalSemesters: number;
+    totalTeachers: number;
+    totalStudents: number;
+    pendingTeacherApplications: number;
+    pendingStudentApplications: number;
+  };
+}
+
+export interface InstitutionAdminProfileUpdatePayload {
+  name?: string;
+  image?: string;
+  contactNo?: string;
+  presentAddress?: string;
+  permanentAddress?: string;
+  bloodGroup?: string;
+  gender?: string;
+}
+
 type ApiSuccess<T> = {
   success: true;
   message?: string;
@@ -156,4 +196,27 @@ export async function deleteInstitutionSemester(semesterId: string) {
   });
 
   return parseResponse<{ id: string }>(response);
+}
+
+export async function getInstitutionAdminDashboardSummary() {
+  const response = await fetch(getApiPath("/institution-admin/dashboard-summary"), {
+    method: "GET",
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  return parseResponse<InstitutionAdminDashboardSummary>(response);
+}
+
+export async function updateInstitutionAdminProfile(payload: InstitutionAdminProfileUpdatePayload) {
+  const response = await fetch(getApiPath("/institution-admin/profile"), {
+    method: "PATCH",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return parseResponse<InstitutionAdminDashboardSummary>(response);
 }

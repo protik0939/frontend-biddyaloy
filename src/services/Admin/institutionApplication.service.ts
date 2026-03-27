@@ -49,6 +49,33 @@ export interface ReviewInstitutionApplicationPayload {
   rejectionReason?: string;
 }
 
+export interface SuperAdminDashboardSummary {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    image: string | null;
+  } | null;
+  stats: {
+    totalInstitutions: number;
+    totalStudents: number;
+    totalTeachers: number;
+    totalStaffAccounts: number;
+    activeSessions: number;
+    pendingApplications: number;
+    approvedToday: number;
+    rejectedApplications: number;
+    newSignupsLast7Days: number;
+    weeklyGrowthPercentage: number;
+    pendingInstitutionVerifications: number;
+    newInstitutionsThisMonth: number;
+    newAdmissionsThisMonth: number;
+    pendingTeacherApprovals: number;
+    verifiedTeacherProfiles: number;
+    institutionTypeBreakdown: Record<string, number>;
+  };
+}
+
 type ApiSuccess<T> = {
   success: true;
   message?: string;
@@ -133,4 +160,14 @@ export async function reviewInstitutionApplication(
   );
 
   return parseResponse<InstitutionApplication>(response);
+}
+
+export async function getSuperAdminDashboardSummary() {
+  const response = await fetch(getApiPath("/institution-applications/superadmin-summary"), {
+    method: "GET",
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  return parseResponse<SuperAdminDashboardSummary>(response);
 }

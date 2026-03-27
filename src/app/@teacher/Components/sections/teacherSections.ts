@@ -5,10 +5,17 @@ import {
   Home,
   Megaphone,
   SquareStack,
+  UserCircle2,
   type LucideIcon,
 } from "lucide-react";
 
-export type TeacherSection = "overview" | "sections" | "classworks" | "attendance" | "marks";
+export type TeacherSection =
+  | "overview"
+  | "profile"
+  | "sections"
+  | "classworks"
+  | "attendance"
+  | "marks";
 
 export interface TeacherSidebarItem {
   label: string;
@@ -19,6 +26,7 @@ export interface TeacherSidebarItem {
 
 export const teacherSidebarItems: TeacherSidebarItem[] = [
   { label: "Overview", href: "/", section: "overview", Icon: Home },
+  { label: "Profile", href: "/profile", section: "profile", Icon: UserCircle2 },
   { label: "Sections & Students", href: "/sections", section: "sections", Icon: SquareStack },
   {
     label: "Tasks & Notices",

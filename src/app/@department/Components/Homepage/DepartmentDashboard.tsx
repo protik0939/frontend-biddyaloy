@@ -10,23 +10,29 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import LogoutButton from "@/Components/LogoutButton";
 import ThemeToggle from "@/Components/ThemeToggle";
+import UserIdentityBadge from "@/Components/UserIdentityBadge";
 import DepartmentSectionContent from "@/app/@department/Components/Sections/DepartmentSectionContent";
+import {
+  DepartmentManagementService,
+  type DepartmentDashboardSummary,
+} from "@/services/Department/departmentManagement.service";
 
 import {
   departmentSidebarItems,
   type DepartmentSection,
 } from "../Sections/departmentSections";
 
-const overviewStats = [
-  { label: "Semesters", value: "Active", Icon: Layers },
-  { label: "Sections", value: "Managed", Icon: SquareStack },
-  { label: "Teachers", value: "Managed", Icon: BookOpen },
-  { label: "Courses", value: "Live", Icon: BookOpen },
-];
+const overviewConfig = [
+  { label: "Semesters", key: "totalSemesters", Icon: Layers },
+  { label: "Sections", key: "totalSections", Icon: SquareStack },
+  { label: "Teachers", key: "totalTeachers", Icon: BookOpen },
+  { label: "Courses", key: "totalCourses", Icon: BookOpen },
+] as const;
 
 const updateNotes = [
   "Section capacity planning is available with semester linkage.",
@@ -43,6 +49,47 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
   const isOverview = section === "overview";
   const [showSidebar, setShowSidebar] = useState(true);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [loadingSummary, setLoadingSummary] = useState(true);
+  const [summary, setSummary] = useState<DepartmentDashboardSummary | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSummary = async () => {
+      setLoadingSummary(true);
+      try {
+        const data = await DepartmentManagementService.getDashboardSummary();
+        if (!cancelled) {
+          setSummary(data);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const message =
+            error instanceof Error ? error.message : "Failed to load department dashboard";
+          toast.error(message);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingSummary(false);
+        }
+      }
+    };
+
+    void loadSummary();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const overviewStats = useMemo(() => {
+    const numberFormatter = new Intl.NumberFormat();
+    return overviewConfig.map((item) => ({
+      label: item.label,
+      value: numberFormatter.format(summary?.stats[item.key] ?? 0),
+      Icon: item.Icon,
+    }));
+  }, [summary]);
 
   return (
     <section className="relative min-h-screen bg-background lg:h-screen lg:overflow-hidden">
@@ -132,6 +179,15 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
               </p>
             </div>
             <div className="flex flex-row justify-center gap-3">
+              <UserIdentityBadge
+                userName={summary?.user?.name}
+                userEmail={summary?.user?.email}
+                userImage={summary?.user?.image}
+                institutionName={summary?.institution?.name}
+                institutionShortName={summary?.institution?.shortName}
+                institutionLogo={summary?.institution?.institutionLogo}
+                compact
+              />
               <ThemeToggle />
               <LogoutButton />
             </div>
@@ -145,18 +201,28 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
                 {isOverview && (
                   <>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                      {overviewStats.map((item) => (
-                        <article
-                          key={item.label}
-                          className="rounded-2xl border border-border/70 bg-card/90 p-4 shadow-sm"
-                        >
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground">{item.label}</p>
-                            <item.Icon className="h-4 w-4 text-primary" />
-                          </div>
-                          <p className="mt-2 text-2xl font-semibold">{item.value}</p>
-                        </article>
-                      ))}
+                      {loadingSummary
+                        ? Array.from({ length: 4 }).map((_, index) => (
+                            <article
+                              key={`department-stats-skeleton-${index + 1}`}
+                              className="rounded-2xl border border-border/70 bg-card/90 p-4 shadow-sm"
+                            >
+                              <div className="mb-3 h-4 w-28 animate-pulse rounded bg-muted/60" />
+                              <div className="h-8 w-24 animate-pulse rounded bg-muted/60" />
+                            </article>
+                          ))
+                        : overviewStats.map((item) => (
+                            <article
+                              key={item.label}
+                              className="rounded-2xl border border-border/70 bg-card/90 p-4 shadow-sm"
+                            >
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm text-muted-foreground">{item.label}</p>
+                                <item.Icon className="h-4 w-4 text-primary" />
+                              </div>
+                              <p className="mt-2 text-2xl font-semibold">{item.value}</p>
+                            </article>
+                          ))}
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -182,15 +248,33 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
                         <div className="mt-4 space-y-3 text-sm">
                           <div className="flex items-center justify-between rounded-lg bg-background/70 px-3 py-2">
                             <span className="text-muted-foreground">Teacher Accounts</span>
-                            <span className="font-semibold">Manage</span>
+                            {loadingSummary ? (
+                              <span className="h-5 w-16 animate-pulse rounded bg-muted/60" />
+                            ) : (
+                              <span className="font-semibold">
+                                {new Intl.NumberFormat().format(summary?.stats.pendingTeacherApplications ?? 0)}
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center justify-between rounded-lg bg-background/70 px-3 py-2">
                             <span className="text-muted-foreground">Student Accounts</span>
-                            <span className="font-semibold">Manage</span>
+                            {loadingSummary ? (
+                              <span className="h-5 w-16 animate-pulse rounded bg-muted/60" />
+                            ) : (
+                              <span className="font-semibold">
+                                {new Intl.NumberFormat().format(summary?.stats.pendingStudentApplications ?? 0)}
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center justify-between rounded-lg bg-background/70 px-3 py-2">
                             <span className="text-muted-foreground">Course Catalog</span>
-                            <span className="font-semibold">Manage</span>
+                            {loadingSummary ? (
+                              <span className="h-5 w-16 animate-pulse rounded bg-muted/60" />
+                            ) : (
+                              <span className="font-semibold">
+                                {new Intl.NumberFormat().format(summary?.stats.totalCourses ?? 0)}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </article>

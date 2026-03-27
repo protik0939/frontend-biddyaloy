@@ -7,27 +7,34 @@ import {
   Megaphone,
   Menu,
   Pencil,
+  Save,
   Settings2,
   ShieldCheck,
   Trash2,
   Workflow,
   X,
+  UserCircle2,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import ImagebbUploader from "@/Components/ui/ImagebbUploader";
 import {
   createInstitutionSemester,
   deleteInstitutionSemester,
+  getInstitutionAdminDashboardSummary,
   listInstitutionSemesters,
+  updateInstitutionAdminProfile,
   updateInstitutionSemester,
 } from "@/services/Admin/adminManagement.service";
 import type {
   CreateInstitutionSubAdminPayload,
+  InstitutionAdminDashboardSummary,
   InstitutionFacultyOption,
   InstitutionSemester,
   InstitutionSubAdminAccountType,
 } from "@/services/Admin/adminManagement.service";
 import type { InstitutionApplication, InstitutionType } from "@/services/Admin/institutionApplication.service";
 import PostingManagementPanel from "@/Components/PostingManagement/PostingManagementPanel";
+import UserIdentityBadge from "@/Components/UserIdentityBadge";
 import SubAdminAccountForm from "./SubAdminAccountForm";
 import type { AdminDashboardSection } from "./types";
 import { formatDateDDMMYYYY, formatInstitutionType } from "./utils";
@@ -78,6 +85,28 @@ export default function AdminDashboard({
   const [editSemesterEndDate, setEditSemesterEndDate] = useState("");
   const [savingSemesterId, setSavingSemesterId] = useState("");
   const [deletingSemesterId, setDeletingSemesterId] = useState("");
+  const [loadingDashboardSummary, setLoadingDashboardSummary] = useState(true);
+  const [dashboardSummary, setDashboardSummary] = useState<InstitutionAdminDashboardSummary | null>(
+    null,
+  );
+  const [profileName, setProfileName] = useState("");
+  const [profileImage, setProfileImage] = useState("");
+  const [profileContactNo, setProfileContactNo] = useState("");
+  const [profilePresentAddress, setProfilePresentAddress] = useState("");
+  const [profilePermanentAddress, setProfilePermanentAddress] = useState("");
+  const [profileBloodGroup, setProfileBloodGroup] = useState("");
+  const [profileGender, setProfileGender] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  const syncProfileInputs = (summary: InstitutionAdminDashboardSummary) => {
+    setProfileName(summary.user?.name ?? "");
+    setProfileImage(summary.user?.image ?? "");
+    setProfileContactNo(summary.user?.contactNo ?? "");
+    setProfilePresentAddress(summary.user?.presentAddress ?? "");
+    setProfilePermanentAddress(summary.user?.permanentAddress ?? "");
+    setProfileBloodGroup(summary.user?.bloodGroup ?? "");
+    setProfileGender(summary.user?.gender ?? "");
+  };
 
   const canCreateSemester =
     semesterName.trim().length >= 2 && Boolean(semesterStartDate) && Boolean(semesterEndDate);
@@ -109,6 +138,37 @@ export default function AdminDashboard({
       void reloadSemesters();
     }
   }, [activeSection]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSummary = async () => {
+      setLoadingDashboardSummary(true);
+      try {
+        const data = await getInstitutionAdminDashboardSummary();
+        if (!cancelled) {
+          setDashboardSummary(data);
+          syncProfileInputs(data);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const message =
+            error instanceof Error ? error.message : "Failed to load dashboard summary";
+          toast.error(message);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingDashboardSummary(false);
+        }
+      }
+    };
+
+    void loadSummary();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const onCreateSemester = async (event: { preventDefault: () => void }) => {
     event.preventDefault();
@@ -146,6 +206,37 @@ export default function AdminDashboard({
       toast.error(message);
     } finally {
       setCreatingSemester(false);
+    }
+  };
+
+  const onSaveProfile = async (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+
+    if (profileName.trim().length < 2) {
+      toast.warning("Name must be at least 2 characters long");
+      return;
+    }
+
+    setSavingProfile(true);
+    try {
+      const updated = await updateInstitutionAdminProfile({
+        name: profileName.trim() || undefined,
+        image: profileImage.trim() || undefined,
+        contactNo: profileContactNo.trim() || undefined,
+        presentAddress: profilePresentAddress.trim() || undefined,
+        permanentAddress: profilePermanentAddress.trim() || undefined,
+        bloodGroup: profileBloodGroup.trim() || undefined,
+        gender: profileGender.trim() || undefined,
+      });
+
+      setDashboardSummary(updated);
+      syncProfileInputs(updated);
+      toast.success("Profile updated successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update profile";
+      toast.error(message);
+    } finally {
+      setSavingProfile(false);
     }
   };
 
@@ -246,6 +337,7 @@ export default function AdminDashboard({
     enabled: boolean;
   }[] = [
       { key: "overview", label: "Overview", icon: LayoutDashboard, enabled: true },
+      { key: "profile", label: "Profile", icon: UserCircle2, enabled: true },
       { key: "workflow", label: "Academic Workflow", icon: Workflow, enabled: true },
       {
         key: "faculty",
@@ -369,8 +461,20 @@ export default function AdminDashboard({
             </div>
 
             <div className="flex items-center gap-2">
+              <UserIdentityBadge
+                userName={dashboardSummary?.user?.name}
+                userEmail={dashboardSummary?.user?.email}
+                userImage={dashboardSummary?.user?.image}
+                institutionName={dashboardSummary?.institution?.name ?? latest.institutionName}
+                institutionShortName={dashboardSummary?.institution?.shortName}
+                institutionLogo={dashboardSummary?.institution?.institutionLogo ?? latest.institutionLogo}
+                compact
+              />
               <div className="rounded-lg border border-border/70 bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                {formatInstitutionType(latest.institutionType)}
+                {formatInstitutionType(
+                  (dashboardSummary?.institution?.type as InstitutionType | undefined) ??
+                    latest.institutionType,
+                )}
               </div>
             </div>
           </header>
@@ -380,7 +484,13 @@ export default function AdminDashboard({
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div className="rounded-xl border border-border/70 bg-background/70 p-4">
                   <p className="text-xs text-muted-foreground">Institution</p>
-                  <p className="mt-1 font-semibold">{latest.institutionName}</p>
+                  {loadingDashboardSummary ? (
+                    <div className="mt-1 h-5 w-36 animate-pulse rounded bg-muted/60" />
+                  ) : (
+                    <p className="mt-1 font-semibold">
+                      {dashboardSummary?.institution?.name ?? latest.institutionName}
+                    </p>
+                  )}
                 </div>
                 <div className="rounded-xl border border-border/70 bg-background/70 p-4">
                   <p className="text-xs text-muted-foreground">Status</p>
@@ -389,8 +499,14 @@ export default function AdminDashboard({
                   </p>
                 </div>
                 <div className="rounded-xl border border-border/70 bg-background/70 p-4">
-                  <p className="text-xs text-muted-foreground">Created At</p>
-                  <p className="mt-1 font-semibold">{formatDateDDMMYYYY(latest.createdAt)}</p>
+                  <p className="text-xs text-muted-foreground">Total Students</p>
+                  {loadingDashboardSummary ? (
+                    <div className="mt-1 h-5 w-20 animate-pulse rounded bg-muted/60" />
+                  ) : (
+                    <p className="mt-1 font-semibold">
+                      {new Intl.NumberFormat().format(dashboardSummary?.stats.totalStudents ?? 0)}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -428,6 +544,97 @@ export default function AdminDashboard({
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {activeSection === "profile" && (
+            <div className="space-y-4">
+              <article className="rounded-xl border border-border/70 bg-background/70 p-4">
+                <h3 className="text-base font-semibold">Profile Preview</h3>
+                <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                  <div className="rounded-xl border border-border/70 bg-card/80 px-3 py-2">
+                    <p className="text-xs text-muted-foreground">Name</p>
+                    <p className="font-medium">{dashboardSummary?.user?.name ?? "-"}</p>
+                  </div>
+                  <div className="rounded-xl border border-border/70 bg-card/80 px-3 py-2">
+                    <p className="text-xs text-muted-foreground">Email</p>
+                    <p className="font-medium">{dashboardSummary?.user?.email ?? "-"}</p>
+                  </div>
+                  <div className="rounded-xl border border-border/70 bg-card/80 px-3 py-2 md:col-span-2">
+                    <p className="text-xs text-muted-foreground">Institution</p>
+                    <p className="font-medium">{dashboardSummary?.institution?.name ?? latest.institutionName}</p>
+                  </div>
+                </div>
+              </article>
+
+              <article className="rounded-xl border border-border/70 bg-background/70 p-4">
+                <h3 className="text-base font-semibold">Edit Profile</h3>
+
+                <form className="mt-4 grid gap-3" onSubmit={onSaveProfile}>
+                  <ImagebbUploader
+                    label="Profile Image"
+                    helperText="Square crop (1:1). Optimized around 100KB before upload."
+                    value={profileImage}
+                    cropRatio={1}
+                    compressionSizeKB={100}
+                    onChange={(url) => setProfileImage(url)}
+                  />
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <input
+                      value={profileName}
+                      onChange={(event) => setProfileName(event.target.value)}
+                      className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                      placeholder="Full name"
+                    />
+                    <input
+                      value={profileContactNo}
+                      onChange={(event) => setProfileContactNo(event.target.value)}
+                      className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                      placeholder="Contact number"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <input
+                      value={profilePresentAddress}
+                      onChange={(event) => setProfilePresentAddress(event.target.value)}
+                      className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                      placeholder="Present address"
+                    />
+                    <input
+                      value={profilePermanentAddress}
+                      onChange={(event) => setProfilePermanentAddress(event.target.value)}
+                      className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                      placeholder="Permanent address"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <input
+                      value={profileBloodGroup}
+                      onChange={(event) => setProfileBloodGroup(event.target.value)}
+                      className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                      placeholder="Blood group"
+                    />
+                    <input
+                      value={profileGender}
+                      onChange={(event) => setProfileGender(event.target.value)}
+                      className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                      placeholder="Gender"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={savingProfile}
+                    className="inline-flex w-fit items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Save Profile
+                  </button>
+                </form>
+              </article>
             </div>
           )}
 

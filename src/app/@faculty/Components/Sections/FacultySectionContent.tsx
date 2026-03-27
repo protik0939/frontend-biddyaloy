@@ -9,6 +9,7 @@ import {
   getFacultyProfileDetails,
   updateFacultyName,
 } from "@/services/Faculty/facultyManagement.service";
+import ImagebbUploader from "@/Components/ui/ImagebbUploader";
 import PostingManagementPanel from "@/Components/PostingManagement/PostingManagementPanel";
 
 import { type FacultySection } from "./facultySections";
@@ -24,6 +25,12 @@ export default function FacultySectionContent({
   const [profileShortName, setProfileShortName] = useState("");
   const [profileDescription, setProfileDescription] = useState("");
   const [profileFacultyId, setProfileFacultyId] = useState("");
+  const [profileImage, setProfileImage] = useState("");
+  const [profileContactNo, setProfileContactNo] = useState("");
+  const [profilePresentAddress, setProfilePresentAddress] = useState("");
+  const [profilePermanentAddress, setProfilePermanentAddress] = useState("");
+  const [profileBloodGroup, setProfileBloodGroup] = useState("");
+  const [profileGender, setProfileGender] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
@@ -73,6 +80,12 @@ export default function FacultySectionContent({
         setProfileShortName(profile.shortName ?? "");
         setProfileDescription(profile.description ?? "");
         setProfileFacultyId(profile.facultyId ?? "");
+        setProfileImage(profile.user.image ?? "");
+        setProfileContactNo(profile.user.contactNo ?? "");
+        setProfilePresentAddress(profile.user.presentAddress ?? "");
+        setProfilePermanentAddress(profile.user.permanentAddress ?? "");
+        setProfileBloodGroup(profile.user.bloodGroup ?? "");
+        setProfileGender(profile.user.gender ?? "");
       } catch (error) {
         if (cancelled) {
           return;
@@ -108,6 +121,12 @@ export default function FacultySectionContent({
         shortName: profileShortName.trim() || undefined,
         description: profileDescription.trim() || undefined,
         facultyId: profileFacultyId.trim() || undefined,
+        image: profileImage.trim() || undefined,
+        contactNo: profileContactNo.trim() || undefined,
+        presentAddress: profilePresentAddress.trim() || undefined,
+        permanentAddress: profilePermanentAddress.trim() || undefined,
+        bloodGroup: profileBloodGroup.trim() || undefined,
+        gender: profileGender.trim() || undefined,
       });
       toast.success("Faculty profile updated successfully");
     } catch (error) {
@@ -167,6 +186,15 @@ export default function FacultySectionContent({
         </p>
 
         <form className="mt-4 space-y-3" onSubmit={onUpdateProfile}>
+          <ImagebbUploader
+            label="Profile Image"
+            helperText="Square crop (1:1). Optimized around 100KB before upload."
+            value={profileImage}
+            cropRatio={1}
+            compressionSizeKB={100}
+            onChange={(url) => setProfileImage(url)}
+          />
+
           {loadingProfile ? (
             <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -206,6 +234,65 @@ export default function FacultySectionContent({
               onChange={(event) => setProfileDescription(event.target.value)}
               rows={4}
               placeholder="Brief summary of this faculty"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+            />
+          </label>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <label className="block space-y-1 text-sm" htmlFor="faculty-contact-no">
+              <span className="font-medium">Contact Number (optional)</span>
+              <input
+                id="faculty-contact-no"
+                value={profileContactNo}
+                onChange={(event) => setProfileContactNo(event.target.value)}
+                placeholder="Contact number"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+              />
+            </label>
+
+            <label className="block space-y-1 text-sm" htmlFor="faculty-blood-group">
+              <span className="font-medium">Blood Group (optional)</span>
+              <input
+                id="faculty-blood-group"
+                value={profileBloodGroup}
+                onChange={(event) => setProfileBloodGroup(event.target.value)}
+                placeholder="Blood group"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+              />
+            </label>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <label className="block space-y-1 text-sm" htmlFor="faculty-present-address">
+              <span className="font-medium">Present Address (optional)</span>
+              <input
+                id="faculty-present-address"
+                value={profilePresentAddress}
+                onChange={(event) => setProfilePresentAddress(event.target.value)}
+                placeholder="Present address"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+              />
+            </label>
+
+            <label className="block space-y-1 text-sm" htmlFor="faculty-permanent-address">
+              <span className="font-medium">Permanent Address (optional)</span>
+              <input
+                id="faculty-permanent-address"
+                value={profilePermanentAddress}
+                onChange={(event) => setProfilePermanentAddress(event.target.value)}
+                placeholder="Permanent address"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+              />
+            </label>
+          </div>
+
+          <label className="block space-y-1 text-sm" htmlFor="faculty-gender">
+            <span className="font-medium">Gender (optional)</span>
+            <input
+              id="faculty-gender"
+              value={profileGender}
+              onChange={(event) => setProfileGender(event.target.value)}
+              placeholder="Gender"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
             />
           </label>

@@ -3,10 +3,13 @@
 import { Loader2, Trash2, Pencil, Save, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import ImagebbUploader from "@/Components/ui/ImagebbUploader";
 
 import {
   type AttendanceStatus,
   type TeacherMarkUpsertPayload,
+  type TeacherPortalProfileResponse,
+  type TeacherProfileUpdatePayload,
   type TeacherAssignedSection,
   type TeacherAttendanceResponse,
   type TeacherClasswork,
@@ -64,6 +67,17 @@ function toDateInputValue(date: Date) {
 
 export default function TeacherSectionContent({ section }: Readonly<TeacherSectionContentProps>) {
   const [loading, setLoading] = useState(false);
+  const [profileState, setProfileState] = useState<TeacherPortalProfileResponse | null>(null);
+  const [profileName, setProfileName] = useState("");
+  const [profileImage, setProfileImage] = useState("");
+  const [profileBio, setProfileBio] = useState("");
+  const [profileDesignation, setProfileDesignation] = useState("");
+  const [profileContactNo, setProfileContactNo] = useState("");
+  const [profilePresentAddress, setProfilePresentAddress] = useState("");
+  const [profilePermanentAddress, setProfilePermanentAddress] = useState("");
+  const [profileBloodGroup, setProfileBloodGroup] = useState("");
+  const [profileGender, setProfileGender] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
   const [sections, setSections] = useState<TeacherAssignedSection[]>([]);
 
   const [classworks, setClassworks] = useState<TeacherClasswork[]>([]);
@@ -95,6 +109,24 @@ export default function TeacherSectionContent({ section }: Readonly<TeacherSecti
   const [markDrafts, setMarkDrafts] = useState<Record<string, Record<string, string>>>({});
 
   const hasSections = sections.length > 0;
+
+  const syncProfileInputs = useCallback((profile: TeacherPortalProfileResponse) => {
+    setProfileName(profile.user.name ?? "");
+    setProfileImage(profile.user.image ?? "");
+    setProfileBio(profile.profile?.bio ?? "");
+    setProfileDesignation(profile.profile?.designation ?? "");
+    setProfileContactNo(profile.user.contactNo ?? "");
+    setProfilePresentAddress(profile.user.presentAddress ?? "");
+    setProfilePermanentAddress(profile.user.permanentAddress ?? "");
+    setProfileBloodGroup(profile.user.bloodGroup ?? "");
+    setProfileGender(profile.user.gender ?? "");
+  }, []);
+
+  const loadProfile = useCallback(async () => {
+    const data = await TeacherPortalService.getProfileOverview();
+    setProfileState(data);
+    syncProfileInputs(data);
+  }, [syncProfileInputs]);
 
   const reloadSections = useCallback(async () => {
     const data = await TeacherPortalService.listSectionsWithStudents();
@@ -187,6 +219,7 @@ export default function TeacherSectionContent({ section }: Readonly<TeacherSecti
     const loadData = async () => {
       setLoading(true);
       try {
+        await loadProfile();
         await reloadSections();
       } catch (error) {
         if (cancelled) {
@@ -207,7 +240,41 @@ export default function TeacherSectionContent({ section }: Readonly<TeacherSecti
     return () => {
       cancelled = true;
     };
-  }, [reloadSections]);
+  }, [loadProfile, reloadSections]);
+
+  const handleSaveProfile = async (event: React.SyntheticEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (profileName.trim().length < 2) {
+      toast.warning("Name must be at least 2 characters long");
+      return;
+    }
+
+    const payload: TeacherProfileUpdatePayload = {
+      name: profileName.trim() || undefined,
+      image: profileImage.trim() || undefined,
+      bio: profileBio.trim() || undefined,
+      designation: profileDesignation.trim() || undefined,
+      contactNo: profileContactNo.trim() || undefined,
+      presentAddress: profilePresentAddress.trim() || undefined,
+      permanentAddress: profilePermanentAddress.trim() || undefined,
+      bloodGroup: profileBloodGroup.trim() || undefined,
+      gender: profileGender.trim() || undefined,
+    };
+
+    setSavingProfile(true);
+    try {
+      const updated = await TeacherPortalService.updateProfile(payload);
+      setProfileState(updated);
+      syncProfileInputs(updated);
+      toast.success("Profile updated successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update profile";
+      toast.error(message);
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   useEffect(() => {
     if (section !== "attendance") {
@@ -466,7 +533,7 @@ export default function TeacherSectionContent({ section }: Readonly<TeacherSecti
     );
   }
 
-  if (!hasSections) {
+  if (!hasSections && section !== "profile") {
     return (
       <article className="rounded-2xl border border-dashed border-border bg-card/80 p-8 text-center shadow-sm">
         <h2 className="text-lg font-semibold">No assigned sections yet</h2>
@@ -474,6 +541,122 @@ export default function TeacherSectionContent({ section }: Readonly<TeacherSecti
           Once your institution assigns course registrations to your profile, your section workspace will appear here.
         </p>
       </article>
+    );
+  }
+
+  if (section === "profile") {
+    return (
+      <div className="space-y-4">
+        <article className="rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
+          <h2 className="text-base font-semibold sm:text-lg">Profile Preview</h2>
+          <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+            <div className="rounded-xl border border-border/70 bg-background/60 px-3 py-2">
+              <p className="text-xs text-muted-foreground">Teacher Name</p>
+              <p className="font-medium">{profileState?.user.name ?? "-"}</p>
+            </div>
+            <div className="rounded-xl border border-border/70 bg-background/60 px-3 py-2">
+              <p className="text-xs text-muted-foreground">Email</p>
+              <p className="font-medium">{profileState?.user.email ?? "-"}</p>
+            </div>
+            <div className="rounded-xl border border-border/70 bg-background/60 px-3 py-2">
+              <p className="text-xs text-muted-foreground">Teacher Initial</p>
+              <p className="font-medium">{profileState?.profile?.teacherInitial ?? "-"}</p>
+            </div>
+            <div className="rounded-xl border border-border/70 bg-background/60 px-3 py-2">
+              <p className="text-xs text-muted-foreground">Teacher ID</p>
+              <p className="font-medium">{profileState?.profile?.teachersId ?? "-"}</p>
+            </div>
+            <div className="rounded-xl border border-border/70 bg-background/60 px-3 py-2 md:col-span-2">
+              <p className="text-xs text-muted-foreground">Institution</p>
+              <p className="font-medium">{profileState?.profile?.institution.name ?? "-"}</p>
+            </div>
+          </div>
+        </article>
+
+        <article className="rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
+          <h2 className="text-base font-semibold sm:text-lg">Edit Profile</h2>
+
+          <form className="mt-4 grid gap-3" onSubmit={handleSaveProfile}>
+            <ImagebbUploader
+              label="Profile Image"
+              helperText="Square crop (1:1). Optimized around 100KB before upload."
+              value={profileImage}
+              cropRatio={1}
+              compressionSizeKB={100}
+              onChange={(url) => setProfileImage(url)}
+            />
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <input
+                value={profileName}
+                onChange={(event) => setProfileName(event.target.value)}
+                className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                placeholder="Full name"
+              />
+              <input
+                value={profileContactNo}
+                onChange={(event) => setProfileContactNo(event.target.value)}
+                className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                placeholder="Contact number"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <input
+                value={profileDesignation}
+                onChange={(event) => setProfileDesignation(event.target.value)}
+                className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                placeholder="Designation"
+              />
+              <input
+                value={profileBloodGroup}
+                onChange={(event) => setProfileBloodGroup(event.target.value)}
+                className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                placeholder="Blood group"
+              />
+            </div>
+
+            <textarea
+              value={profileBio}
+              onChange={(event) => setProfileBio(event.target.value)}
+              rows={3}
+              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+              placeholder="Short bio"
+            />
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <input
+                value={profilePresentAddress}
+                onChange={(event) => setProfilePresentAddress(event.target.value)}
+                className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                placeholder="Present address"
+              />
+              <input
+                value={profilePermanentAddress}
+                onChange={(event) => setProfilePermanentAddress(event.target.value)}
+                className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                placeholder="Permanent address"
+              />
+            </div>
+
+            <input
+              value={profileGender}
+              onChange={(event) => setProfileGender(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+              placeholder="Gender"
+            />
+
+            <button
+              type="submit"
+              disabled={savingProfile}
+              className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save Profile
+            </button>
+          </form>
+        </article>
+      </div>
     );
   }
 

@@ -12,6 +12,30 @@ export interface FacultyProfileDetails {
   fullName: string;
   shortName: string | null;
   description: string | null;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    image: string | null;
+    contactNo?: string | null;
+    presentAddress?: string | null;
+    permanentAddress?: string | null;
+    bloodGroup?: string | null;
+    gender?: string | null;
+  };
+  institution: {
+    id: string;
+    name: string;
+    shortName: string | null;
+    institutionLogo: string | null;
+  } | null;
+  stats: {
+    totalDepartments: number;
+    totalTeachers: number;
+    totalStudents: number;
+    departmentAccounts: number;
+    activeCourses: number;
+  };
 }
 
 export interface Department {
@@ -32,10 +56,16 @@ export interface DepartmentAccount {
 }
 
 export interface UpdateFacultyNamePayload {
-  fullName: string;
+  fullName?: string;
   facultyId?: string;
   shortName?: string;
   description?: string;
+  image?: string;
+  contactNo?: string;
+  presentAddress?: string;
+  permanentAddress?: string;
+  bloodGroup?: string;
+  gender?: string;
 }
 
 export interface CreateDepartmentPayload {
@@ -163,10 +193,16 @@ export async function updateFacultyName(payload: UpdateFacultyNamePayload) {
   ];
 
   return tryPatchWithFallback<FacultyProfile>(endpoints, {
-    fullName: payload.fullName,
+    fullName: payload.fullName || undefined,
     facultyId: payload.facultyId || undefined,
     shortName: payload.shortName || undefined,
     description: payload.description || undefined,
+    image: payload.image || undefined,
+    contactNo: payload.contactNo || undefined,
+    presentAddress: payload.presentAddress || undefined,
+    permanentAddress: payload.permanentAddress || undefined,
+    bloodGroup: payload.bloodGroup || undefined,
+    gender: payload.gender || undefined,
   });
 }
 

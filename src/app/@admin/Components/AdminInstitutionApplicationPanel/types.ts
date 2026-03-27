@@ -6,6 +6,7 @@ import type {
 
 export type AdminDashboardSection =
   | "overview"
+  | "profile"
   | "workflow"
   | "faculty"
   | "departments"

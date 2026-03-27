@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import {
   type DepartmentTeacherJobApplication,
+  type DepartmentStudentAdmissionApplication,
   type Batch,
   DepartmentManagementService,
   type AccountStatus,
@@ -16,9 +17,11 @@ import {
   type Section,
   type Semester,
   type Student,
+  type StudentAdmissionApplicationStatus,
   type TeacherJobApplicationStatus,
   type Teacher,
 } from "@/services/Department/departmentManagement.service";
+import ImagebbUploader from "@/Components/ui/ImagebbUploader";
 import PostingManagementPanel from "@/Components/PostingManagement/PostingManagementPanel";
 
 import { type DepartmentSection } from "./departmentSections";
@@ -42,6 +45,13 @@ const TEACHER_APPLICATION_FILTER_OPTIONS: Array<TeacherJobApplicationStatus | "A
   "APPROVED",
   "REJECTED",
 ];
+const STUDENT_APPLICATION_FILTER_OPTIONS: Array<StudentAdmissionApplicationStatus | "ALL"> = [
+  "ALL",
+  "PENDING",
+  "SHORTLISTED",
+  "APPROVED",
+  "REJECTED",
+];
 
 export default function DepartmentSectionContent({
   section,
@@ -51,6 +61,13 @@ export default function DepartmentSectionContent({
   const [profileFullName, setProfileFullName] = useState("");
   const [profileShortName, setProfileShortName] = useState("");
   const [profileDescription, setProfileDescription] = useState("");
+  const [profileName, setProfileName] = useState("");
+  const [profileImage, setProfileImage] = useState("");
+  const [profileContactNo, setProfileContactNo] = useState("");
+  const [profilePresentAddress, setProfilePresentAddress] = useState("");
+  const [profilePermanentAddress, setProfilePermanentAddress] = useState("");
+  const [profileBloodGroup, setProfileBloodGroup] = useState("");
+  const [profileGender, setProfileGender] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
 
   const [semesters, setSemesters] = useState<Semester[]>([]);
@@ -138,7 +155,6 @@ export default function DepartmentSectionContent({
   const [studentName, setStudentName] = useState("");
   const [studentEmail, setStudentEmail] = useState("");
   const [studentPassword, setStudentPassword] = useState("");
-  const [studentInitial, setStudentInitial] = useState("");
   const [studentId, setStudentId] = useState("");
   const [creatingStudent, setCreatingStudent] = useState(false);
   const [updatingStudentId, setUpdatingStudentId] = useState("");
@@ -156,6 +172,21 @@ export default function DepartmentSectionContent({
   const [reviewTeacherId, setReviewTeacherId] = useState("");
   const [reviewTeacherDesignation, setReviewTeacherDesignation] = useState("");
   const [reviewTeacherBio, setReviewTeacherBio] = useState("");
+
+  const [studentApplications, setStudentApplications] = useState<
+    DepartmentStudentAdmissionApplication[]
+  >([]);
+  const [studentApplicationFilter, setStudentApplicationFilter] = useState<
+    StudentAdmissionApplicationStatus | "ALL"
+  >("ALL");
+  const [activeStudentApplication, setActiveStudentApplication] =
+    useState<DepartmentStudentAdmissionApplication | null>(null);
+  const [reviewingStudentApplication, setReviewingStudentApplication] = useState(false);
+  const [reviewStudentResponseMessage, setReviewStudentResponseMessage] = useState("");
+  const [reviewStudentRejectionReason, setReviewStudentRejectionReason] = useState("");
+  const [reviewStudentId, setReviewStudentId] = useState("");
+  const [reviewStudentBio, setReviewStudentBio] = useState("");
+
   const [portalReady, setPortalReady] = useState(false);
 
   const canCreateSemester =
@@ -209,10 +240,9 @@ export default function DepartmentSectionContent({
       studentName.trim().length >= 2 &&
       studentEmail.includes("@") &&
       studentPassword.length >= 8 &&
-      studentInitial.trim().length >= 2 &&
       studentId.trim().length >= 2
     );
-  }, [studentEmail, studentId, studentInitial, studentName, studentPassword]);
+  }, [studentEmail, studentId, studentName, studentPassword]);
 
   const filteredSectionsForRegistration = useMemo(() => {
     if (!registrationSemesterId && !registrationBatchId) {
@@ -361,6 +391,11 @@ export default function DepartmentSectionContent({
     setTeacherApplications(data);
   };
 
+  const reloadStudentApplications = async (status?: StudentAdmissionApplicationStatus) => {
+    const data = await DepartmentManagementService.listStudentApplications(status);
+    setStudentApplications(data);
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -380,6 +415,13 @@ export default function DepartmentSectionContent({
           setProfileFullName(profile.fullName ?? "");
           setProfileShortName(profile.shortName ?? "");
           setProfileDescription(profile.description ?? "");
+          setProfileName(profile.user?.name ?? "");
+          setProfileImage(profile.user?.image ?? "");
+          setProfileContactNo(profile.user?.contactNo ?? "");
+          setProfilePresentAddress(profile.user?.presentAddress ?? "");
+          setProfilePermanentAddress(profile.user?.permanentAddress ?? "");
+          setProfileBloodGroup(profile.user?.bloodGroup ?? "");
+          setProfileGender(profile.user?.gender ?? "");
         }
 
         if (section === "semesters") {
@@ -411,6 +453,15 @@ export default function DepartmentSectionContent({
             reloadTeachers(),
             reloadTeacherApplications(
               teacherApplicationFilter === "ALL" ? undefined : teacherApplicationFilter,
+            ),
+          ]);
+        }
+
+        if (section === "studentApplications") {
+          await Promise.all([
+            reloadStudents(),
+            reloadStudentApplications(
+              studentApplicationFilter === "ALL" ? undefined : studentApplicationFilter,
             ),
           ]);
         }
@@ -457,7 +508,7 @@ export default function DepartmentSectionContent({
     };
     // We intentionally reload when section changes; reload helpers are local wrappers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [section, teacherApplicationFilter]);
+  }, [section, teacherApplicationFilter, studentApplicationFilter]);
 
   useEffect(() => {
     setPortalReady(true);
@@ -603,11 +654,20 @@ export default function DepartmentSectionContent({
         fullName: profileFullName.trim(),
         shortName: profileShortName.trim() || undefined,
         description: profileDescription.trim() || undefined,
+        name: profileName.trim() || undefined,
+        image: profileImage.trim() || undefined,
+        contactNo: profileContactNo.trim() || undefined,
+        presentAddress: profilePresentAddress.trim() || undefined,
+        permanentAddress: profilePermanentAddress.trim() || undefined,
+        bloodGroup: profileBloodGroup.trim() || undefined,
+        gender: profileGender.trim() || undefined,
       });
 
       setProfileFullName(updated.fullName ?? "");
       setProfileShortName(updated.shortName ?? "");
       setProfileDescription(updated.description ?? "");
+      setProfileName(updated.user?.name ?? profileName);
+      setProfileImage(updated.user?.image ?? profileImage);
       toast.success("Department profile updated successfully");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to update department profile";
@@ -1005,14 +1065,12 @@ export default function DepartmentSectionContent({
         name: studentName.trim(),
         email: studentEmail.trim(),
         password: studentPassword,
-        studentInitial: studentInitial.trim(),
         studentsId: studentId.trim(),
       });
 
       setStudentName("");
       setStudentEmail("");
       setStudentPassword("");
-      setStudentInitial("");
       setStudentId("");
       await reloadStudents();
       toast.success("Student account created successfully");
@@ -1132,6 +1190,78 @@ export default function DepartmentSectionContent({
     }
 
     return "bg-slate-100 text-slate-700";
+  };
+
+  const openStudentApplicationModal = (item: DepartmentStudentAdmissionApplication) => {
+    setActiveStudentApplication(item);
+    setReviewStudentResponseMessage(item.institutionResponse ?? "");
+    setReviewStudentRejectionReason("");
+    setReviewStudentId(item.studentProfile?.studentsId ?? "");
+    setReviewStudentBio(item.studentProfile?.bio ?? "");
+  };
+
+  const closeStudentApplicationModal = () => {
+    setActiveStudentApplication(null);
+    setReviewStudentResponseMessage("");
+    setReviewStudentRejectionReason("");
+    setReviewStudentId("");
+    setReviewStudentBio("");
+  };
+
+  const reviewStudentApplication = async (
+    status: Extract<StudentAdmissionApplicationStatus, "SHORTLISTED" | "APPROVED" | "REJECTED">,
+  ) => {
+    if (!activeStudentApplication) {
+      return;
+    }
+
+    if (status === "REJECTED" && !reviewStudentRejectionReason.trim()) {
+      toast.warning("Rejection reason is required");
+      return;
+    }
+
+    if (status === "APPROVED") {
+      if (reviewStudentId.trim().length < 2) {
+        toast.warning("Student ID is required for approval");
+        return;
+      }
+    }
+
+    setReviewingStudentApplication(true);
+    try {
+      await DepartmentManagementService.reviewStudentApplication(activeStudentApplication.id, {
+        status,
+        responseMessage: reviewStudentResponseMessage.trim() || undefined,
+        rejectionReason:
+          status === "REJECTED" ? reviewStudentRejectionReason.trim() || undefined : undefined,
+        studentsId: status === "APPROVED" ? reviewStudentId.trim() : undefined,
+        bio: status === "APPROVED" ? reviewStudentBio.trim() || undefined : undefined,
+      });
+
+      await Promise.all([
+        reloadStudentApplications(studentApplicationFilter === "ALL" ? undefined : studentApplicationFilter),
+        reloadStudents(),
+      ]);
+
+      let successMessage = "Application rejected successfully";
+      if (status === "SHORTLISTED") {
+        successMessage = "Application shortlisted successfully";
+      } else if (status === "APPROVED") {
+        successMessage = "Application accepted successfully";
+      }
+
+      toast.success(successMessage);
+      closeStudentApplicationModal();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to review application";
+      toast.error(message);
+    } finally {
+      setReviewingStudentApplication(false);
+    }
+  };
+
+  const studentApplicationStatusClasses = (status: StudentAdmissionApplicationStatus) => {
+    return teacherApplicationStatusClasses(status);
   };
 
   const onAssignTeacherToCourseSection = async (event: { preventDefault: () => void }) => {
@@ -1287,6 +1417,27 @@ export default function DepartmentSectionContent({
 
         <form className="mt-4 space-y-4" onSubmit={onUpdateProfile}>
           {loadingIndicator}
+          <ImagebbUploader
+            label="Profile Image"
+            helperText="Square crop (1:1). Optimized around 100KB before upload."
+            value={profileImage}
+            cropRatio={1}
+            compressionSizeKB={100}
+            onChange={(url) => setProfileImage(url)}
+          />
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium" htmlFor="department-admin-name">
+              Admin Name
+            </label>
+            <input
+              id="department-admin-name"
+              value={profileName}
+              onChange={(event) => setProfileName(event.target.value)}
+              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+            />
+          </div>
+
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="department-full-name">
@@ -1320,6 +1471,68 @@ export default function DepartmentSectionContent({
               rows={4}
               value={profileDescription}
               onChange={(event) => setProfileDescription(event.target.value)}
+              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="department-contact-no">
+                Contact Number
+              </label>
+              <input
+                id="department-contact-no"
+                value={profileContactNo}
+                onChange={(event) => setProfileContactNo(event.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="department-blood-group">
+                Blood Group
+              </label>
+              <input
+                id="department-blood-group"
+                value={profileBloodGroup}
+                onChange={(event) => setProfileBloodGroup(event.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="department-present-address">
+                Present Address
+              </label>
+              <input
+                id="department-present-address"
+                value={profilePresentAddress}
+                onChange={(event) => setProfilePresentAddress(event.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="department-permanent-address">
+                Permanent Address
+              </label>
+              <input
+                id="department-permanent-address"
+                value={profilePermanentAddress}
+                onChange={(event) => setProfilePermanentAddress(event.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium" htmlFor="department-gender">
+              Gender
+            </label>
+            <input
+              id="department-gender"
+              value={profileGender}
+              onChange={(event) => setProfileGender(event.target.value)}
               className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
             />
           </div>
@@ -2124,6 +2337,249 @@ export default function DepartmentSectionContent({
     );
   }
 
+  if (section === "studentApplications") {
+    const studentApplicationModal = activeStudentApplication ? (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+        <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Student Application Details
+              </p>
+              <h3 className="text-lg font-semibold">{activeStudentApplication.studentUser.name}</h3>
+              <p className="text-sm text-muted-foreground">{activeStudentApplication.studentUser.email}</p>
+            </div>
+            <button
+              type="button"
+              onClick={closeStudentApplicationModal}
+              className="rounded-lg border border-border bg-background px-3 py-1 text-xs font-medium"
+            >
+              Close
+            </button>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+              <p className="text-xs text-muted-foreground">Posting</p>
+              <p className="font-medium">{activeStudentApplication.posting.title}</p>
+              <p className="text-sm text-muted-foreground">
+                Location: {activeStudentApplication.posting.location ?? "-"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Applied: {formatDateDDMMYYYY(activeStudentApplication.appliedAt)}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+              <p className="text-xs text-muted-foreground">Current Status</p>
+              <span
+                className={`mt-1 inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${studentApplicationStatusClasses(activeStudentApplication.status)}`}
+              >
+                {activeStudentApplication.status}
+              </span>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Last response: {activeStudentApplication.institutionResponse ?? "-"}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-border/70 bg-background/70 p-3">
+            <p className="text-xs text-muted-foreground">Cover Letter</p>
+            <p className="mt-1 whitespace-pre-wrap text-sm">
+              {activeStudentApplication.coverLetter ?? "No cover letter provided."}
+            </p>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-border/70 bg-background/70 p-3">
+            <p className="text-xs text-muted-foreground">Application Profile</p>
+            {activeStudentApplication.studentUser.studentApplicationProfile ? (
+              <div className="mt-1 space-y-2 text-sm">
+                <p>
+                  <span className="font-medium">Headline:</span>{" "}
+                  {activeStudentApplication.studentUser.studentApplicationProfile.headline}
+                </p>
+                <p>
+                  <span className="font-medium">About:</span>{" "}
+                  {activeStudentApplication.studentUser.studentApplicationProfile.about}
+                </p>
+                <div>
+                  <p className="font-medium">Document Links</p>
+                  <div className="mt-1 space-y-1 text-xs text-muted-foreground">
+                    {activeStudentApplication.studentUser.studentApplicationProfile.documentUrls.map(
+                      (item) => (
+                        <p key={item} className="truncate">
+                          {item}
+                        </p>
+                      ),
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <p className="font-medium">Academic Records</p>
+                  <div className="mt-1 space-y-1 text-xs text-muted-foreground">
+                    {activeStudentApplication.studentUser.studentApplicationProfile.academicRecords.map(
+                      (record) => (
+                        <p key={`${record.examName}-${record.institute}-${record.year}`}>
+                          {record.examName} | {record.institute} | {record.result} | {record.year}
+                        </p>
+                      ),
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="mt-1 text-sm text-muted-foreground">No application profile submitted.</p>
+            )}
+          </div>
+
+          {activeStudentApplication.status === "PENDING" ||
+          activeStudentApplication.status === "SHORTLISTED" ? (
+            <div className="mt-4 space-y-3 rounded-xl border border-border/70 bg-background/70 p-3">
+              <h4 className="text-sm font-semibold">Review Decision</h4>
+
+              <textarea
+                rows={2}
+                value={reviewStudentResponseMessage}
+                onChange={(event) => setReviewStudentResponseMessage(event.target.value)}
+                placeholder="Response note for applicant (optional)"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              />
+
+              <textarea
+                rows={2}
+                value={reviewStudentRejectionReason}
+                onChange={(event) => setReviewStudentRejectionReason(event.target.value)}
+                placeholder="Rejection reason (required only for reject)"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              />
+
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <input
+                  value={reviewStudentId}
+                  onChange={(event) => setReviewStudentId(event.target.value)}
+                  placeholder="Student ID (required for accept)"
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                />
+              </div>
+
+              <textarea
+                rows={2}
+                value={reviewStudentBio}
+                onChange={(event) => setReviewStudentBio(event.target.value)}
+                placeholder="Student bio (optional, used on accept)"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              />
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => void reviewStudentApplication("APPROVED")}
+                  disabled={reviewingStudentApplication}
+                  className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                >
+                  {reviewingStudentApplication ? "Processing..." : "Accept"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void reviewStudentApplication("SHORTLISTED")}
+                  disabled={reviewingStudentApplication}
+                  className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                >
+                  {reviewingStudentApplication ? "Processing..." : "Shortlist"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void reviewStudentApplication("REJECTED")}
+                  disabled={reviewingStudentApplication}
+                  className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                >
+                  {reviewingStudentApplication ? "Processing..." : "Reject"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-muted-foreground">
+              This application is finalized and can no longer be changed.
+            </p>
+          )}
+        </div>
+      </div>
+    ) : null;
+
+    return (
+      <>
+        <article className="space-y-4 rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
+          <h2 className="text-lg font-semibold">Student Applications</h2>
+          <p className="text-sm text-muted-foreground">
+            Review incoming student admission applications and mark them as Accepted, Shortlisted,
+            or Rejected.
+          </p>
+          {loadingIndicator}
+
+          <div className="flex flex-wrap gap-2">
+            {STUDENT_APPLICATION_FILTER_OPTIONS.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setStudentApplicationFilter(item)}
+                className={`rounded-lg border px-3 py-1 text-xs font-medium ${
+                  studentApplicationFilter === item
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background"
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            {studentApplications.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-xl border border-border/70 bg-background/70 px-3 py-3 text-sm"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium">{item.studentUser.name}</p>
+                    <p className="text-muted-foreground">{item.studentUser.email}</p>
+                    <p className="text-muted-foreground">{item.posting.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Applied on {formatDateDDMMYYYY(item.appliedAt)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-1 text-[11px] font-semibold ${studentApplicationStatusClasses(item.status)}`}
+                    >
+                      {item.status}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => openStudentApplicationModal(item)}
+                      className="rounded-lg border border-border bg-background px-3 py-1 text-xs font-medium"
+                    >
+                      View Details
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {studentApplications.length === 0 && !loadingPageData ? (
+              <p className="rounded-xl border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+                No student applications found for this filter.
+              </p>
+            ) : null}
+          </div>
+        </article>
+
+        {portalReady && studentApplicationModal
+          ? createPortal(studentApplicationModal, document.body)
+          : null}
+      </>
+    );
+  }
+
   if (section === "teacherApplications") {
     const teacherApplicationModal = activeTeacherApplication ? (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
@@ -2549,12 +3005,6 @@ export default function DepartmentSectionContent({
           />
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <input
-            value={studentInitial}
-            onChange={(event) => setStudentInitial(event.target.value)}
-            placeholder="Student initial"
-            className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-          />
           <input
             value={studentId}
             onChange={(event) => setStudentId(event.target.value)}

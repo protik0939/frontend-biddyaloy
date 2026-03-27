@@ -86,8 +86,14 @@ export interface TeacherPortalProfileResponse {
     id: string;
     name: string;
     email: string;
+    image: string | null;
     accountStatus: string;
     role: string;
+    contactNo?: string | null;
+    presentAddress?: string | null;
+    permanentAddress?: string | null;
+    bloodGroup?: string | null;
+    gender?: string | null;
   };
   profile: {
     id: string;
@@ -194,7 +200,6 @@ export interface TeacherAssignedSection {
     };
     studentProfile: {
       id: string;
-      studentInitial: string;
       studentsId: string;
       bio: string | null;
       user: {
@@ -234,7 +239,6 @@ export interface TeacherAttendanceItem {
   courseRegistrationId: string;
   studentProfile: {
     id: string;
-    studentInitial: string;
     studentsId: string;
     user: {
       id: string;
@@ -267,7 +271,6 @@ export interface TeacherSectionMarkRow {
   };
   studentProfile: {
     id: string;
-    studentInitial: string;
     studentsId: string;
     user: {
       id: string;
@@ -319,9 +322,28 @@ export interface TeacherMarkUpsertPayload {
   finalExam?: number;
 }
 
+export interface TeacherProfileUpdatePayload {
+  name?: string;
+  image?: string;
+  bio?: string;
+  designation?: string;
+  contactNo?: string;
+  presentAddress?: string;
+  permanentAddress?: string;
+  bloodGroup?: string;
+  gender?: string;
+}
+
 export const TeacherPortalService = {
   getProfileOverview() {
     return apiGet<TeacherPortalProfileResponse>("/api/v1/teacher/profile");
+  },
+
+  updateProfile(payload: TeacherProfileUpdatePayload) {
+    return apiPatch<TeacherPortalProfileResponse>(
+      "/api/v1/teacher/profile",
+      payload as Record<string, unknown>,
+    );
   },
 
   getApplicationProfile() {

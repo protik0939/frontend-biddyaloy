@@ -22,6 +22,7 @@ export type DepartmentSection =
   | "courseRegistrations"
   | "teachers"
   | "teacherApplications"
+  | "studentApplications"
   | "students"
   | "posts";
 
@@ -55,6 +56,12 @@ export const departmentSidebarItems: DepartmentSidebarItem[] = [
     label: "Teacher Applications",
     href: "/teacher-applications",
     section: "teacherApplications",
+    Icon: ScrollText,
+  },
+  {
+    label: "Student Applications",
+    href: "/student-applications",
+    section: "studentApplications",
     Icon: ScrollText,
   },
   { label: "Teachers", href: "/teachers", section: "teachers", Icon: GraduationCap },

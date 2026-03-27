@@ -15,10 +15,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import LogoutButton from "@/Components/LogoutButton";
 import ThemeToggle from "@/Components/ThemeToggle";
+import UserIdentityBadge from "@/Components/UserIdentityBadge";
+import { getSuperAdminDashboardSummary } from "@/services/Admin/institutionApplication.service";
 
 import SuperAdminSectionContent from "../Sections/SuperAdminSectionContent";
 import {
@@ -58,34 +61,34 @@ const announcements = [
   "System audit completed successfully for this week.",
 ];
 
-const overviewStats: StatItem[] = [
+const overviewStatConfig: Array<{
+  key: "totalInstitutions" | "totalStudents" | "totalTeachers" | "totalStaffAccounts";
+  label: string;
+  Icon: StatItem["Icon"];
+  change: "weeklyGrowthPercentage" | null;
+}> = [
   {
+    key: "totalInstitutions",
     label: "Total Institutions",
-    value: "142",
-    change: "+8.2%",
+    change: "weeklyGrowthPercentage",
     Icon: Building2,
-    subStats: [
-      { label: "Schools", value: "96" },
-      { label: "Colleges", value: "31" },
-      { label: "Universities", value: "15" },
-    ],
   },
   {
+    key: "totalStudents",
     label: "Total Students",
-    value: "128,450",
-    change: "+5.6%",
+    change: null,
     Icon: Users,
   },
   {
+    key: "totalTeachers",
     label: "Total Teachers",
-    value: "8,450",
-    change: "+3.4%",
+    change: null,
     Icon: GraduationCap,
   },
   {
+    key: "totalStaffAccounts",
     label: "Total Staff Accounts",
-    value: "3,220",
-    change: "+2.1%",
+    change: null,
     Icon: UserCheck,
   },
 ];
@@ -99,6 +102,70 @@ export default function SuperAdminHome({ section }: Readonly<SuperAdminHomeProps
   const isOverview = section === "overview";
   const [showSidebar, setShowSidebar] = useState(true);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [loadingSummary, setLoadingSummary] = useState(true);
+  const [summary, setSummary] = useState<Awaited<
+    ReturnType<typeof getSuperAdminDashboardSummary>
+  > | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSummary = async () => {
+      setLoadingSummary(true);
+      try {
+        const data = await getSuperAdminDashboardSummary();
+        if (!cancelled) {
+          setSummary(data);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const message =
+            error instanceof Error ? error.message : "Failed to load dashboard summary";
+          toast.error(message);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingSummary(false);
+        }
+      }
+    };
+
+    void loadSummary();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const overviewStats = useMemo<StatItem[]>(() => {
+    const numberFormatter = new Intl.NumberFormat();
+    const stats = summary?.stats;
+    const typeBreakdown = stats?.institutionTypeBreakdown ?? {};
+
+    return overviewStatConfig.map((item) => {
+      const rawValue = stats?.[item.key] ?? 0;
+      const changeValue =
+        item.change === "weeklyGrowthPercentage"
+          ? `${stats?.weeklyGrowthPercentage ?? 0}%`
+          : "";
+
+      const subStats =
+        item.key === "totalInstitutions"
+          ? Object.entries(typeBreakdown).map(([label, value]) => ({
+              label,
+              value: numberFormatter.format(value),
+            }))
+          : undefined;
+
+      return {
+        label: item.label,
+        value: numberFormatter.format(rawValue),
+        change: changeValue,
+        Icon: item.Icon,
+        subStats,
+      };
+    });
+  }, [summary]);
 
   return (
     <section className="relative min-h-screen bg-background lg:h-screen lg:overflow-hidden">
@@ -191,6 +258,13 @@ export default function SuperAdminHome({ section }: Readonly<SuperAdminHomeProps
               </p>
             </div>
             <div className="flex flex-row justify-center gap-3">
+              <UserIdentityBadge
+                userName={summary?.user?.name}
+                userEmail={summary?.user?.email}
+                userImage={summary?.user?.image}
+                institutionName="Biddyaloy Platform"
+                compact
+              />
               <ThemeToggle />
               <LogoutButton />
             </div>
@@ -204,9 +278,18 @@ export default function SuperAdminHome({ section }: Readonly<SuperAdminHomeProps
                 {isOverview && (
                   <>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                      {overviewStats.map((item) => (
-                        <StatCard key={item.label} item={item} />
-                      ))}
+                      {loadingSummary
+                        ? Array.from({ length: 4 }).map((_, index) => (
+                            <article
+                              key={`superadmin-stats-skeleton-${index + 1}`}
+                              className="rounded-2xl border border-border/70 bg-card/90 p-4 shadow-sm"
+                            >
+                              <div className="mb-3 h-4 w-28 animate-pulse rounded bg-muted/60" />
+                              <div className="h-8 w-24 animate-pulse rounded bg-muted/60" />
+                              <div className="mt-3 h-3 w-20 animate-pulse rounded bg-muted/60" />
+                            </article>
+                          ))
+                        : overviewStats.map((item) => <StatCard key={item.label} item={item} />)}
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -232,15 +315,33 @@ export default function SuperAdminHome({ section }: Readonly<SuperAdminHomeProps
                         <div className="mt-4 space-y-3 text-sm">
                           <div className="flex items-center justify-between rounded-lg bg-background/70 px-3 py-2">
                             <span className="text-muted-foreground">Active Sessions</span>
-                            <span className="font-semibold">1,284</span>
+                            {loadingSummary ? (
+                              <span className="h-5 w-16 animate-pulse rounded bg-muted/60" />
+                            ) : (
+                              <span className="font-semibold">
+                                {new Intl.NumberFormat().format(summary?.stats.activeSessions ?? 0)}
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center justify-between rounded-lg bg-background/70 px-3 py-2">
                             <span className="text-muted-foreground">Pending Requests</span>
-                            <span className="font-semibold">73</span>
+                            {loadingSummary ? (
+                              <span className="h-5 w-16 animate-pulse rounded bg-muted/60" />
+                            ) : (
+                              <span className="font-semibold">
+                                {new Intl.NumberFormat().format(summary?.stats.pendingApplications ?? 0)}
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center justify-between rounded-lg bg-background/70 px-3 py-2">
-                            <span className="text-muted-foreground">Resolved Tickets</span>
-                            <span className="font-semibold">421</span>
+                            <span className="text-muted-foreground">Approved Today</span>
+                            {loadingSummary ? (
+                              <span className="h-5 w-16 animate-pulse rounded bg-muted/60" />
+                            ) : (
+                              <span className="font-semibold">
+                                {new Intl.NumberFormat().format(summary?.stats.approvedToday ?? 0)}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </article>
@@ -259,7 +360,7 @@ export default function SuperAdminHome({ section }: Readonly<SuperAdminHomeProps
                   </>
                 )}
 
-                <SuperAdminSectionContent section={section} />
+                <SuperAdminSectionContent section={section} summary={summary} loading={loadingSummary} />
               </div>
             </div>
           </div>

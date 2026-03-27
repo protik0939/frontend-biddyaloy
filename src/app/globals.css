@@ -196,6 +196,16 @@
     @apply bg-background text-foreground;
   }
 
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
   .app-sonner [data-sonner-toast] {
     border-color: color-mix(in oklab, var(--border) 78%, transparent);
     background: color-mix(in oklab, var(--card) 94%, transparent);

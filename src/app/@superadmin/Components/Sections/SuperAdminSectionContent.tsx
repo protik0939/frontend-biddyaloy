@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { type ComponentType } from "react";
+import type { SuperAdminDashboardSummary } from "@/services/Admin/institutionApplication.service";
 
 import ApplicationsReviewPanel from "./ApplicationsReviewPanel";
 
@@ -18,6 +19,8 @@ import { type SuperAdminSection } from "./superAdminSections";
 
 interface SuperAdminSectionContentProps {
   section: SuperAdminSection;
+  summary?: SuperAdminDashboardSummary | null;
+  loading?: boolean;
 }
 
 const sectionContentMap: Record<
@@ -113,9 +116,94 @@ const sectionContentMap: Record<
 
 export default function SuperAdminSectionContent({
   section,
+  summary,
+  loading = false,
 }: Readonly<SuperAdminSectionContentProps>) {
   const content = sectionContentMap[section];
   const showApplicationReviewPanel = section === "applications";
+  const stats = summary?.stats;
+  const numberFormatter = new Intl.NumberFormat();
+
+  const dynamicMetrics: Partial<Record<SuperAdminSection, { label: string; value: string }[]>> = {
+    overview: [
+      { label: "Active Sessions", value: numberFormatter.format(stats?.activeSessions ?? 0) },
+      { label: "New Signups", value: numberFormatter.format(stats?.newSignupsLast7Days ?? 0) },
+      { label: "Weekly Growth", value: `${stats?.weeklyGrowthPercentage ?? 0}%` },
+    ],
+    institutions: [
+      {
+        label: "Pending Verifications",
+        value: numberFormatter.format(stats?.pendingInstitutionVerifications ?? 0),
+      },
+      { label: "Active Campuses", value: numberFormatter.format(stats?.totalInstitutions ?? 0) },
+      {
+        label: "New This Month",
+        value: numberFormatter.format(stats?.newInstitutionsThisMonth ?? 0),
+      },
+    ],
+    students: [
+      { label: "Active Students", value: numberFormatter.format(stats?.totalStudents ?? 0) },
+      {
+        label: "New Admissions",
+        value: numberFormatter.format(stats?.newAdmissionsThisMonth ?? 0),
+      },
+      {
+        label: "Pending Applications",
+        value: numberFormatter.format(stats?.pendingApplications ?? 0),
+      },
+    ],
+    teachers: [
+      { label: "Active Teachers", value: numberFormatter.format(stats?.totalTeachers ?? 0) },
+      {
+        label: "Pending Approval",
+        value: numberFormatter.format(stats?.pendingTeacherApprovals ?? 0),
+      },
+      {
+        label: "Verified Profiles",
+        value: numberFormatter.format(stats?.verifiedTeacherProfiles ?? 0),
+      },
+    ],
+    admins: [
+      { label: "Active Admins", value: numberFormatter.format(stats?.totalStaffAccounts ?? 0) },
+      {
+        label: "Pending Requests",
+        value: numberFormatter.format(stats?.pendingApplications ?? 0),
+      },
+      {
+        label: "Rejected Applications",
+        value: numberFormatter.format(stats?.rejectedApplications ?? 0),
+      },
+    ],
+    reports: [
+      {
+        label: "Generated This Month",
+        value: numberFormatter.format(stats?.newInstitutionsThisMonth ?? 0),
+      },
+      { label: "Approved Today", value: numberFormatter.format(stats?.approvedToday ?? 0) },
+      { label: "Active Sessions", value: numberFormatter.format(stats?.activeSessions ?? 0) },
+    ],
+    applications: [
+      { label: "Pending Review", value: numberFormatter.format(stats?.pendingApplications ?? 0) },
+      { label: "Approved Today", value: numberFormatter.format(stats?.approvedToday ?? 0) },
+      {
+        label: "Rejected",
+        value: numberFormatter.format(stats?.rejectedApplications ?? 0),
+      },
+    ],
+    settings: [
+      {
+        label: "Institutions",
+        value: numberFormatter.format(stats?.totalInstitutions ?? 0),
+      },
+      {
+        label: "Staff Accounts",
+        value: numberFormatter.format(stats?.totalStaffAccounts ?? 0),
+      },
+      { label: "Sync Status", value: "Healthy" },
+    ],
+  };
+
+  const metrics = dynamicMetrics[section] ?? content.metrics;
 
   return (
     <div className="space-y-4">
@@ -131,13 +219,17 @@ export default function SuperAdminSectionContent({
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {content.metrics.map((metric) => (
+          {metrics.map((metric) => (
             <div
               key={metric.label}
               className="rounded-xl border border-border/70 bg-background/70 p-3"
             >
               <p className="text-xs text-muted-foreground">{metric.label}</p>
-              <p className="mt-1 text-lg font-semibold">{metric.value}</p>
+              {loading ? (
+                <div className="mt-1 h-6 w-20 animate-pulse rounded bg-muted/60" />
+              ) : (
+                <p className="mt-1 text-lg font-semibold">{metric.value}</p>
+              )}
             </div>
           ))}
         </div>

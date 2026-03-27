@@ -11,20 +11,26 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import LogoutButton from "@/Components/LogoutButton";
 import ThemeToggle from "@/Components/ThemeToggle";
+import UserIdentityBadge from "@/Components/UserIdentityBadge";
 import FacultySectionContent from "@/app/@faculty/Components/Sections/FacultySectionContent";
+import {
+  type FacultyProfileDetails,
+  getFacultyProfileDetails,
+} from "@/services/Faculty/facultyManagement.service";
 
 import { facultySidebarItems, type FacultySection } from "../Sections/facultySections";
 
-const overviewStats = [
-  { label: "Total Departments", value: "12", Icon: Building2 },
-  { label: "Total Teachers", value: "148", Icon: GraduationCap },
-  { label: "Total Students", value: "3,892", Icon: Users },
-  { label: "Department Accounts", value: "24", Icon: UserCheck },
-];
+const statConfig = [
+  { label: "Total Departments", key: "totalDepartments", Icon: Building2 },
+  { label: "Total Teachers", key: "totalTeachers", Icon: GraduationCap },
+  { label: "Total Students", key: "totalStudents", Icon: Users },
+  { label: "Department Accounts", key: "departmentAccounts", Icon: UserCheck },
+] as const;
 
 const updates = [
   "Registration schedule for summer term is now active.",
@@ -41,6 +47,46 @@ export default function FacultyDashboard({ section }: Readonly<FacultyDashboardP
   const isOverview = section === "overview";
   const [showSidebar, setShowSidebar] = useState(true);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [profileDetails, setProfileDetails] = useState<FacultyProfileDetails | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadProfile = async () => {
+      setLoadingProfile(true);
+      try {
+        const data = await getFacultyProfileDetails();
+        if (!cancelled) {
+          setProfileDetails(data);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : "Failed to load faculty profile";
+          toast.error(message);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingProfile(false);
+        }
+      }
+    };
+
+    void loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const overviewStats = useMemo(() => {
+    const numberFormatter = new Intl.NumberFormat();
+    return statConfig.map((item) => ({
+      label: item.label,
+      value: numberFormatter.format(profileDetails?.stats[item.key] ?? 0),
+      Icon: item.Icon,
+    }));
+  }, [profileDetails]);
 
   return (
     <section className="relative min-h-screen bg-background lg:h-screen lg:overflow-hidden">
@@ -130,6 +176,15 @@ export default function FacultyDashboard({ section }: Readonly<FacultyDashboardP
               </p>
             </div>
             <div className="flex flex-row justify-center gap-3">
+              <UserIdentityBadge
+                userName={profileDetails?.user?.name}
+                userEmail={profileDetails?.user?.email}
+                userImage={profileDetails?.user?.image}
+                institutionName={profileDetails?.institution?.name}
+                institutionShortName={profileDetails?.institution?.shortName}
+                institutionLogo={profileDetails?.institution?.institutionLogo}
+                compact
+              />
               <ThemeToggle />
               <LogoutButton />
             </div>
@@ -143,18 +198,28 @@ export default function FacultyDashboard({ section }: Readonly<FacultyDashboardP
                 {isOverview && (
                   <>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                      {overviewStats.map((item) => (
-                        <article
-                          key={item.label}
-                          className="rounded-2xl border border-border/70 bg-card/90 p-4 shadow-sm"
-                        >
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground">{item.label}</p>
-                            <item.Icon className="h-4 w-4 text-primary" />
-                          </div>
-                          <p className="mt-2 text-2xl font-semibold">{item.value}</p>
-                        </article>
-                      ))}
+                      {loadingProfile
+                        ? Array.from({ length: 4 }).map((_, index) => (
+                            <article
+                              key={`faculty-stats-skeleton-${index + 1}`}
+                              className="rounded-2xl border border-border/70 bg-card/90 p-4 shadow-sm"
+                            >
+                              <div className="mb-3 h-4 w-28 animate-pulse rounded bg-muted/60" />
+                              <div className="h-8 w-24 animate-pulse rounded bg-muted/60" />
+                            </article>
+                          ))
+                        : overviewStats.map((item) => (
+                            <article
+                              key={item.label}
+                              className="rounded-2xl border border-border/70 bg-card/90 p-4 shadow-sm"
+                            >
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm text-muted-foreground">{item.label}</p>
+                                <item.Icon className="h-4 w-4 text-primary" />
+                              </div>
+                              <p className="mt-2 text-2xl font-semibold">{item.value}</p>
+                            </article>
+                          ))}
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -180,15 +245,33 @@ export default function FacultyDashboard({ section }: Readonly<FacultyDashboardP
                         <div className="mt-4 space-y-3 text-sm">
                           <div className="flex items-center justify-between rounded-lg bg-background/70 px-3 py-2">
                             <span className="text-muted-foreground">Departments</span>
-                            <span className="font-semibold">18</span>
+                            {loadingProfile ? (
+                              <span className="h-5 w-16 animate-pulse rounded bg-muted/60" />
+                            ) : (
+                              <span className="font-semibold">
+                                {new Intl.NumberFormat().format(profileDetails?.stats.totalDepartments ?? 0)}
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center justify-between rounded-lg bg-background/70 px-3 py-2">
                             <span className="text-muted-foreground">Active Courses</span>
-                            <span className="font-semibold">74</span>
+                            {loadingProfile ? (
+                              <span className="h-5 w-16 animate-pulse rounded bg-muted/60" />
+                            ) : (
+                              <span className="font-semibold">
+                                {new Intl.NumberFormat().format(profileDetails?.stats.activeCourses ?? 0)}
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center justify-between rounded-lg bg-background/70 px-3 py-2">
-                            <span className="text-muted-foreground">Support Tickets</span>
-                            <span className="font-semibold">11</span>
+                            <span className="text-muted-foreground">Department Accounts</span>
+                            {loadingProfile ? (
+                              <span className="h-5 w-16 animate-pulse rounded bg-muted/60" />
+                            ) : (
+                              <span className="font-semibold">
+                                {new Intl.NumberFormat().format(profileDetails?.stats.departmentAccounts ?? 0)}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </article>

@@ -10,6 +10,7 @@ import {
   type AccountStatus,
   type Course,
   type CourseRegistration,
+  type SectionCourseTeacherAssignment,
   type Section,
   type Semester,
   type Student,
@@ -89,11 +90,19 @@ export default function DepartmentSectionContent({
   const [deletingCourseId, setDeletingCourseId] = useState("");
 
   const [courseRegistrations, setCourseRegistrations] = useState<CourseRegistration[]>([]);
+  const [courseTeacherAssignments, setCourseTeacherAssignments] = useState<
+    SectionCourseTeacherAssignment[]
+  >([]);
+  const [assignmentSemesterId, setAssignmentSemesterId] = useState("");
+  const [assignmentBatchId, setAssignmentBatchId] = useState("");
+  const [assignmentSectionId, setAssignmentSectionId] = useState("");
+  const [assignmentCourseId, setAssignmentCourseId] = useState("");
+  const [assignmentTeacherProfileId, setAssignmentTeacherProfileId] = useState("");
+  const [savingTeacherAssignment, setSavingTeacherAssignment] = useState(false);
   const [registrationSemesterId, setRegistrationSemesterId] = useState("");
   const [registrationBatchId, setRegistrationBatchId] = useState("");
   const [registrationSectionId, setRegistrationSectionId] = useState("");
   const [registrationCourseId, setRegistrationCourseId] = useState("");
-  const [registrationTeacherProfileId, setRegistrationTeacherProfileId] = useState("");
   const [registrationStudentProfileId, setRegistrationStudentProfileId] = useState("");
   const [creatingRegistration, setCreatingRegistration] = useState(false);
   const [editingCourseRegistrationId, setEditingCourseRegistrationId] = useState("");
@@ -101,7 +110,6 @@ export default function DepartmentSectionContent({
   const [editingRegistrationBatchId, setEditingRegistrationBatchId] = useState("");
   const [editingRegistrationSectionId, setEditingRegistrationSectionId] = useState("");
   const [editingRegistrationCourseId, setEditingRegistrationCourseId] = useState("");
-  const [editingRegistrationTeacherProfileId, setEditingRegistrationTeacherProfileId] = useState("");
   const [editingRegistrationStudentProfileId, setEditingRegistrationStudentProfileId] = useState("");
   const [updatingCourseRegistrationId, setUpdatingCourseRegistrationId] = useState("");
   const [deletingCourseRegistrationId, setDeletingCourseRegistrationId] = useState("");
@@ -193,13 +201,40 @@ export default function DepartmentSectionContent({
     );
   }, [registrationBatchId, registrationSemesterId, sections]);
 
+  const filteredSectionsForTeacherAssignment = useMemo(() => {
+    if (!assignmentSemesterId && !assignmentBatchId) {
+      return sections;
+    }
+
+    return sections.filter(
+      (item) =>
+        (!assignmentSemesterId || item.semesterId === assignmentSemesterId) &&
+        (!assignmentBatchId || item.batchId === assignmentBatchId),
+    );
+  }, [assignmentBatchId, assignmentSemesterId, sections]);
+
+  const canAssignTeacherToCourseSection = useMemo(() => {
+    return (
+      Boolean(assignmentSemesterId) &&
+      Boolean(assignmentBatchId) &&
+      Boolean(assignmentSectionId) &&
+      Boolean(assignmentCourseId) &&
+      Boolean(assignmentTeacherProfileId)
+    );
+  }, [
+    assignmentBatchId,
+    assignmentCourseId,
+    assignmentSectionId,
+    assignmentSemesterId,
+    assignmentTeacherProfileId,
+  ]);
+
   const canCreateCourseRegistration = useMemo(() => {
     return (
       Boolean(registrationSemesterId) &&
       Boolean(registrationBatchId) &&
       Boolean(registrationSectionId) &&
       Boolean(registrationCourseId) &&
-      Boolean(registrationTeacherProfileId) &&
       Boolean(registrationStudentProfileId)
     );
   }, [
@@ -208,7 +243,6 @@ export default function DepartmentSectionContent({
     registrationSectionId,
     registrationSemesterId,
     registrationStudentProfileId,
-    registrationTeacherProfileId,
   ]);
 
   const filteredSectionsForEditingRegistration = useMemo(() => {
@@ -229,7 +263,6 @@ export default function DepartmentSectionContent({
       Boolean(editingRegistrationBatchId) &&
       Boolean(editingRegistrationSectionId) &&
       Boolean(editingRegistrationCourseId) &&
-      Boolean(editingRegistrationTeacherProfileId) &&
       Boolean(editingRegistrationStudentProfileId)
     );
   }, [
@@ -238,7 +271,6 @@ export default function DepartmentSectionContent({
     editingRegistrationSectionId,
     editingRegistrationSemesterId,
     editingRegistrationStudentProfileId,
-    editingRegistrationTeacherProfileId,
   ]);
 
   const reloadSemesters = async () => {
@@ -246,6 +278,9 @@ export default function DepartmentSectionContent({
     setSemesters(data);
     if (!sectionSemesterId && data.length > 0) {
       setSectionSemesterId(data[0].id);
+    }
+    if (!assignmentSemesterId && data.length > 0) {
+      setAssignmentSemesterId(data[0].id);
     }
     if (!registrationSemesterId && data.length > 0) {
       setRegistrationSemesterId(data[0].id);
@@ -257,6 +292,9 @@ export default function DepartmentSectionContent({
     setBatches(data);
     if (!sectionBatchId && data.length > 0) {
       setSectionBatchId(data[0].id);
+    }
+    if (!assignmentBatchId && data.length > 0) {
+      setAssignmentBatchId(data[0].id);
     }
     if (!registrationBatchId && data.length > 0) {
       setRegistrationBatchId(data[0].id);
@@ -276,6 +314,11 @@ export default function DepartmentSectionContent({
   const reloadCourseRegistrations = async () => {
     const data = await DepartmentManagementService.listCourseRegistrations();
     setCourseRegistrations(data);
+  };
+
+  const reloadCourseTeacherAssignments = async () => {
+    const data = await DepartmentManagementService.listSectionCourseTeacherAssignments();
+    setCourseTeacherAssignments(data);
   };
 
   const reloadTeachers = async () => {
@@ -341,6 +384,7 @@ export default function DepartmentSectionContent({
             reloadCourses(),
             reloadTeachers(),
             reloadStudents(),
+            reloadCourseTeacherAssignments(),
             reloadCourseRegistrations(),
           ]);
         }
@@ -373,16 +417,22 @@ export default function DepartmentSectionContent({
   }, [batches, sectionBatchId]);
 
   useEffect(() => {
+    if (!assignmentBatchId && batches.length > 0) {
+      setAssignmentBatchId(batches[0].id);
+    }
+  }, [assignmentBatchId, batches]);
+
+  useEffect(() => {
     if (!registrationBatchId && batches.length > 0) {
       setRegistrationBatchId(batches[0].id);
     }
   }, [batches, registrationBatchId]);
 
   useEffect(() => {
-    if (!registrationTeacherProfileId && teachers.length > 0) {
-      setRegistrationTeacherProfileId(teachers[0].id);
+    if (!assignmentTeacherProfileId && teachers.length > 0) {
+      setAssignmentTeacherProfileId(teachers[0].id);
     }
-  }, [registrationTeacherProfileId, teachers]);
+  }, [assignmentTeacherProfileId, teachers]);
 
   useEffect(() => {
     if (!registrationStudentProfileId && students.length > 0) {
@@ -405,6 +455,23 @@ export default function DepartmentSectionContent({
       setRegistrationSectionId(filteredSectionsForRegistration[0].id);
     }
   }, [filteredSectionsForRegistration, registrationSectionId]);
+
+  useEffect(() => {
+    if (filteredSectionsForTeacherAssignment.length === 0) {
+      if (assignmentSectionId) {
+        setAssignmentSectionId("");
+      }
+      return;
+    }
+
+    const selectedExists = filteredSectionsForTeacherAssignment.some(
+      (item) => item.id === assignmentSectionId,
+    );
+
+    if (!selectedExists) {
+      setAssignmentSectionId(filteredSectionsForTeacherAssignment[0].id);
+    }
+  }, [assignmentSectionId, filteredSectionsForTeacherAssignment]);
 
   useEffect(() => {
     if (!editingCourseRegistrationId) {
@@ -440,6 +507,20 @@ export default function DepartmentSectionContent({
     editingRegistrationSectionId,
     filteredSectionsForEditingRegistration,
   ]);
+
+  useEffect(() => {
+    if (courses.length === 0) {
+      if (assignmentCourseId) {
+        setAssignmentCourseId("");
+      }
+      return;
+    }
+
+    const selectedExists = courses.some((item) => item.id === assignmentCourseId);
+    if (!selectedExists) {
+      setAssignmentCourseId(courses[0].id);
+    }
+  }, [assignmentCourseId, courses]);
 
   useEffect(() => {
     if (courses.length === 0) {
@@ -904,11 +985,38 @@ export default function DepartmentSectionContent({
     }
   };
 
+  const onAssignTeacherToCourseSection = async (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+
+    if (!canAssignTeacherToCourseSection) {
+      toast.warning("Select semester, batch, section, course and teacher");
+      return;
+    }
+
+    setSavingTeacherAssignment(true);
+    try {
+      await DepartmentManagementService.upsertSectionCourseTeacherAssignment({
+        semesterId: assignmentSemesterId,
+        sectionId: assignmentSectionId,
+        courseId: assignmentCourseId,
+        teacherProfileId: assignmentTeacherProfileId,
+      });
+
+      await Promise.all([reloadCourseTeacherAssignments(), reloadCourseRegistrations()]);
+      toast.success("Teacher assigned successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to assign teacher";
+      toast.error(message);
+    } finally {
+      setSavingTeacherAssignment(false);
+    }
+  };
+
   const onCreateCourseRegistration = async (event: { preventDefault: () => void }) => {
     event.preventDefault();
 
     if (!canCreateCourseRegistration) {
-      toast.warning("Select semester, batch, section, course, teacher and student");
+      toast.warning("Select semester, batch, section, course and student");
       return;
     }
 
@@ -917,7 +1025,6 @@ export default function DepartmentSectionContent({
       await DepartmentManagementService.createCourseRegistration({
         courseId: registrationCourseId,
         studentProfileId: registrationStudentProfileId,
-        teacherProfileId: registrationTeacherProfileId,
         sectionId: registrationSectionId,
         semesterId: registrationSemesterId,
       });
@@ -939,7 +1046,6 @@ export default function DepartmentSectionContent({
     setEditingRegistrationBatchId(item.section.batch?.id ?? "");
     setEditingRegistrationSectionId(item.sectionId);
     setEditingRegistrationCourseId(item.courseId);
-    setEditingRegistrationTeacherProfileId(item.teacherProfileId);
     setEditingRegistrationStudentProfileId(item.studentProfileId);
   };
 
@@ -949,13 +1055,12 @@ export default function DepartmentSectionContent({
     setEditingRegistrationBatchId("");
     setEditingRegistrationSectionId("");
     setEditingRegistrationCourseId("");
-    setEditingRegistrationTeacherProfileId("");
     setEditingRegistrationStudentProfileId("");
   };
 
   const onUpdateCourseRegistration = async (courseRegistrationId: string) => {
     if (!canUpdateCourseRegistration) {
-      toast.warning("Select semester, batch, section, course, teacher and student");
+      toast.warning("Select semester, batch, section, course and student");
       return;
     }
 
@@ -965,7 +1070,6 @@ export default function DepartmentSectionContent({
         semesterId: editingRegistrationSemesterId,
         sectionId: editingRegistrationSectionId,
         courseId: editingRegistrationCourseId,
-        teacherProfileId: editingRegistrationTeacherProfileId,
         studentProfileId: editingRegistrationStudentProfileId,
       });
 
@@ -1532,9 +1636,100 @@ export default function DepartmentSectionContent({
       <article className="space-y-4 rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
         <h2 className="text-lg font-semibold">Course Registration</h2>
         <p className="text-sm text-muted-foreground">
-          Register a student into a course for a semester and section using linked academic data.
+          Assign teacher by section and course first, then register students without selecting teacher.
         </p>
         {loadingIndicator}
+
+        <form className="space-y-3 rounded-xl border border-border/70 bg-background/60 p-4" onSubmit={onAssignTeacherToCourseSection}>
+          <p className="text-sm font-medium">Assign Teacher To Course + Section</p>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+            <select
+              value={assignmentSemesterId}
+              onChange={(event) => setAssignmentSemesterId(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select semester</option>
+              {semesters.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {formatSeasonYear(item)}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={assignmentBatchId}
+              onChange={(event) => setAssignmentBatchId(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select batch</option>
+              {batches.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={assignmentSectionId}
+              onChange={(event) => setAssignmentSectionId(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select section</option>
+              {filteredSectionsForTeacherAssignment.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={assignmentCourseId}
+              onChange={(event) => setAssignmentCourseId(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select course</option>
+              {courses.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.courseCode} - {item.courseTitle}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={assignmentTeacherProfileId}
+              onChange={(event) => setAssignmentTeacherProfileId(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select teacher</option>
+              {teachers.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.user.name} ({item.teacherInitial})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            disabled={savingTeacherAssignment || !canAssignTeacherToCourseSection}
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            {savingTeacherAssignment ? "Saving Assignment..." : "Save Teacher Assignment"}
+          </button>
+
+          <div className="space-y-1">
+            {courseTeacherAssignments.slice(0, 6).map((item) => (
+              <p key={item.id} className="text-xs text-muted-foreground">
+                {item.section.name} | {item.course.courseCode} - {item.course.courseTitle} | {item.teacherProfile.user.name}
+              </p>
+            ))}
+            {courseTeacherAssignments.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                No teacher assignments yet. Create one before registering students.
+              </p>
+            ) : null}
+          </div>
+        </form>
 
         <form className="space-y-3" onSubmit={onCreateCourseRegistration}>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -1586,19 +1781,6 @@ export default function DepartmentSectionContent({
               {courses.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.courseCode} - {item.courseTitle}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={registrationTeacherProfileId}
-              onChange={(event) => setRegistrationTeacherProfileId(event.target.value)}
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Select teacher</option>
-              {teachers.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.user.name} ({item.teacherInitial})
                 </option>
               ))}
             </select>
@@ -1677,20 +1859,6 @@ export default function DepartmentSectionContent({
                       {courses.map((courseItem) => (
                         <option key={courseItem.id} value={courseItem.id}>
                           {courseItem.courseCode} - {courseItem.courseTitle}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={editingRegistrationTeacherProfileId}
-                      onChange={(event) =>
-                        setEditingRegistrationTeacherProfileId(event.target.value)
-                      }
-                      className="rounded-lg border border-border bg-background px-2 py-1"
-                    >
-                      <option value="">Select teacher</option>
-                      {teachers.map((teacherItem) => (
-                        <option key={teacherItem.id} value={teacherItem.id}>
-                          {teacherItem.user.name} ({teacherItem.teacherInitial})
                         </option>
                       ))}
                     </select>

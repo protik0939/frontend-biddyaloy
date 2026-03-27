@@ -1,5 +1,5 @@
-import TeacherHome from '@/Components/HomePage/TeacherHome';
+import TeacherDashboard from "@/app/@teacher/Components/homepage/TeacherDashboard";
 
 export default function TeacherPage() {
-  return <TeacherHome />;
+  return <TeacherDashboard section="overview" />;
 }

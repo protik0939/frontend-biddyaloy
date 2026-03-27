@@ -125,6 +125,38 @@ export interface CourseRegistration {
   };
 }
 
+export interface SectionCourseTeacherAssignment {
+  id: string;
+  sectionId: string;
+  courseId: string;
+  teacherProfileId: string;
+  section: {
+    id: string;
+    name: string;
+    semesterId: string;
+    batch?: {
+      id: string;
+      name: string;
+    } | null;
+  };
+  course: {
+    id: string;
+    courseCode: string;
+    courseTitle: string;
+  };
+  teacherProfile: {
+    id: string;
+    teacherInitial: string;
+    teachersId: string;
+    designation: string;
+    user: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  };
+}
+
 export interface Teacher {
   id: string;
   teacherInitial: string;
@@ -336,10 +368,22 @@ export const DepartmentManagementService = {
     return apiGet<CourseRegistration[]>("/api/v1/department/course-registrations");
   },
 
+  listSectionCourseTeacherAssignments() {
+    return apiGet<SectionCourseTeacherAssignment[]>("/api/v1/department/course-teacher-assignments");
+  },
+
+  upsertSectionCourseTeacherAssignment(payload: {
+    sectionId: string;
+    courseId: string;
+    teacherProfileId: string;
+    semesterId: string;
+  }) {
+    return apiPost<SectionCourseTeacherAssignment>("/api/v1/department/course-teacher-assignments", payload);
+  },
+
   createCourseRegistration(payload: {
     courseId: string;
     studentProfileId: string;
-    teacherProfileId: string;
     sectionId: string;
     programId?: string;
     semesterId: string;
@@ -352,7 +396,6 @@ export const DepartmentManagementService = {
     payload: {
       courseId?: string;
       studentProfileId?: string;
-      teacherProfileId?: string;
       sectionId?: string;
       programId?: string;
       semesterId?: string;

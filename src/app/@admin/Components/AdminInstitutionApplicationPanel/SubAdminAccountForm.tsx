@@ -6,11 +6,14 @@ import type {
   InstitutionFacultyOption,
   InstitutionSubAdminAccountType,
 } from "@/services/Admin/adminManagement.service";
+import SearchableSelect from "@/Components/ui/SearchableSelect";
 
 type Props = Readonly<{
   accountType: InstitutionSubAdminAccountType;
   facultyOptions: InstitutionFacultyOption[];
   facultyOptionsLoading?: boolean;
+  facultySearchTerm?: string;
+  onFacultySearchChange?: (value: string) => void;
   disabled?: boolean;
   title: string;
   description: string;
@@ -37,6 +40,8 @@ export default function SubAdminAccountForm({
   accountType,
   facultyOptions,
   facultyOptionsLoading,
+  facultySearchTerm,
+  onFacultySearchChange,
   disabled,
   title,
   description,
@@ -215,23 +220,20 @@ export default function SubAdminAccountForm({
 
             <label className="block space-y-1 text-sm">
               <span className="font-medium">Faculty</span>
-              <select
+              <SearchableSelect
                 value={form.facultyId ?? ""}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, facultyId: event.target.value }))
-                }
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                onChange={(nextValue) => setForm((prev) => ({ ...prev, facultyId: nextValue }))}
+                options={facultyOptions.map((faculty) => ({
+                  value: faculty.id,
+                  label: faculty.shortName ? `${faculty.fullName} (${faculty.shortName})` : faculty.fullName,
+                }))}
+                placeholder={facultySelectPlaceholder}
+                searchPlaceholder="Search faculty..."
+                emptyText="No faculty found"
+                searchValue={facultySearchTerm ?? ""}
+                onSearchValueChange={onFacultySearchChange}
                 disabled={disabled || submitting || facultyOptionsLoading || facultyOptions.length === 0}
-                required
-              >
-                <option value="">{facultySelectPlaceholder}</option>
-                {facultyOptions.map((faculty) => (
-                  <option key={faculty.id} value={faculty.id}>
-                    {faculty.fullName}
-                    {faculty.shortName ? ` (${faculty.shortName})` : ""}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
 
             <div className="rounded-lg border border-border/70 bg-background/60 p-3 space-y-3">

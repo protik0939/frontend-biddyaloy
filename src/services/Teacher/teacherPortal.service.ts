@@ -388,17 +388,21 @@ export const TeacherPortalService = {
     return apiGet<TeacherJobApplication[]>("/api/v1/teacher/job-applications");
   },
 
-  listSectionsWithStudents() {
-    return apiGet<TeacherAssignedSection[]>("/api/v1/teacher/sections");
+  listSectionsWithStudents(search?: string) {
+    const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+    return apiGet<TeacherAssignedSection[]>(`/api/v1/teacher/sections${query}`);
   },
 
-  listClassworks(params?: { sectionId?: string; type?: TeacherClassworkType }) {
+  listClassworks(params?: { sectionId?: string; type?: TeacherClassworkType; search?: string }) {
     const searchParams = new URLSearchParams();
     if (params?.sectionId) {
       searchParams.set("sectionId", params.sectionId);
     }
     if (params?.type) {
       searchParams.set("type", params.type);
+    }
+    if (params?.search?.trim()) {
+      searchParams.set("search", params.search.trim());
     }
 
     const query = searchParams.toString();

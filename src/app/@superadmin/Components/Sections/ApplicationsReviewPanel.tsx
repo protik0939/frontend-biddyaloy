@@ -3,6 +3,7 @@
 import { Check, FileClock, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import SearchableSelect from "@/Components/ui/SearchableSelect";
 
 import {
   getInstitutionApplicationsForSuperAdmin,
@@ -96,18 +97,20 @@ export default function ApplicationsReviewPanel() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <SearchableSelect
             value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as InstitutionApplicationStatus | "ALL")
-            }
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
-          >
-            <option value="ALL">All</option>
-            <option value="PENDING">Pending</option>
-            <option value="APPROVED">Approved</option>
-            <option value="REJECTED">Rejected</option>
-          </select>
+            onChange={(nextValue) => setStatusFilter(nextValue as InstitutionApplicationStatus | "ALL")}
+            options={[
+              { value: "ALL", label: "All" },
+              { value: "PENDING", label: "Pending" },
+              { value: "APPROVED", label: "Approved" },
+              { value: "REJECTED", label: "Rejected" },
+            ]}
+            placeholder="All"
+            searchPlaceholder="Search status..."
+            emptyText="No status found"
+            className="min-w-40"
+          />
 
           <button
             type="button"

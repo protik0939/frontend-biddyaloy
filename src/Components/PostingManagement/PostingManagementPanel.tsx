@@ -10,6 +10,8 @@ import {
   getPostingOptions,
   type PostingScope,
 } from "@/services/Posting/postingManagement.service";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import SearchableSelect from "@/Components/ui/SearchableSelect";
 
 type Props = Readonly<{
   scope: PostingScope;
@@ -26,6 +28,10 @@ export default function PostingManagementPanel({ scope }: Props) {
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [facultyId, setFacultyId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
+  const [facultySearch, setFacultySearch] = useState("");
+  const [departmentSearch, setDepartmentSearch] = useState("");
+  const debouncedFacultySearch = useDebouncedValue(facultySearch, 1000);
+  const debouncedDepartmentSearch = useDebouncedValue(departmentSearch, 1000);
 
   const [faculties, setFaculties] = useState<Array<{ id: string; fullName: string }>>([]);
   const [departments, setDepartments] = useState<
@@ -50,7 +56,9 @@ export default function PostingManagementPanel({ scope }: Props) {
     const loadOptions = async () => {
       setLoadingOptions(true);
       try {
-        const options = await getPostingOptions();
+        const options = await getPostingOptions(
+          [debouncedFacultySearch, debouncedDepartmentSearch].filter(Boolean).join(" "),
+        );
         if (cancelled) {
           return;
         }
@@ -74,7 +82,7 @@ export default function PostingManagementPanel({ scope }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [debouncedDepartmentSearch, debouncedFacultySearch]);
 
   const filteredDepartments = useMemo(() => {
     if (scope !== "INSTITUTION") {
@@ -227,38 +235,34 @@ export default function PostingManagementPanel({ scope }: Props) {
           {scope === "INSTITUTION" && (
             <label className="block space-y-1 text-sm">
               <span className="font-medium">Faculty</span>
-              <select
+              <SearchableSelect
                 value={facultyId}
-                onChange={(event) => setFacultyId(event.target.value)}
+                onChange={setFacultyId}
+                options={faculties.map((item) => ({ value: item.id, label: item.fullName }))}
+                placeholder={loadingOptions ? "Loading..." : "Select faculty"}
+                searchPlaceholder="Search faculty..."
+                emptyText="No faculty found"
+                searchValue={facultySearch}
+                onSearchValueChange={setFacultySearch}
                 disabled={loadingOptions || faculties.length === 0}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
-              >
-                <option value="">{loadingOptions ? "Loading..." : "Select faculty"}</option>
-                {faculties.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.fullName}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
           )}
 
           {scope !== "DEPARTMENT" && (
             <label className="block space-y-1 text-sm">
               <span className="font-medium">Department</span>
-              <select
+              <SearchableSelect
                 value={departmentId}
-                onChange={(event) => setDepartmentId(event.target.value)}
+                onChange={setDepartmentId}
+                options={filteredDepartments.map((item) => ({ value: item.id, label: item.fullName }))}
+                placeholder={loadingOptions ? "Loading..." : "Select department"}
+                searchPlaceholder="Search department..."
+                emptyText="No department found"
+                searchValue={departmentSearch}
+                onSearchValueChange={setDepartmentSearch}
                 disabled={loadingOptions || filteredDepartments.length === 0}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
-              >
-                <option value="">{loadingOptions ? "Loading..." : "Select department"}</option>
-                {filteredDepartments.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.fullName}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
           )}
 

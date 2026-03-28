@@ -398,13 +398,13 @@ async function listMyAdmissionApplications() {
   return apiGet<StudentAdmissionApplication[]>("/api/v1/student/admission-applications");
 }
 
-async function listTimeline(query?: { semesterId?: string; type?: StudentClassworkType }) {
-  const queryString = toQueryString({ semesterId: query?.semesterId, type: query?.type });
+async function listTimeline(query?: { semesterId?: string; type?: StudentClassworkType; search?: string }) {
+  const queryString = toQueryString({ semesterId: query?.semesterId, type: query?.type, search: query?.search });
   return apiGet<StudentTimelineItem[]>(`/api/v1/student/timeline${queryString}`);
 }
 
-async function listRegisteredCourses(query?: { semesterId?: string }) {
-  const queryString = toQueryString({ semesterId: query?.semesterId });
+async function listRegisteredCourses(query?: { semesterId?: string; search?: string }) {
+  const queryString = toQueryString({ semesterId: query?.semesterId, search: query?.search });
   return apiGet<StudentRegisteredCourse[]>(`/api/v1/student/registered-courses${queryString}`);
 }
 
@@ -413,8 +413,8 @@ async function listResults(query: { semesterId: string }) {
   return apiGet<StudentResultResponse>(`/api/v1/student/results${queryString}`);
 }
 
-async function listSubmissions(query?: { classworkId?: string; semesterId?: string }) {
-  const queryString = toQueryString({ classworkId: query?.classworkId, semesterId: query?.semesterId });
+async function listSubmissions(query?: { classworkId?: string; semesterId?: string; search?: string }) {
+  const queryString = toQueryString({ classworkId: query?.classworkId, semesterId: query?.semesterId, search: query?.search });
   return apiGet<StudentSubmission[]>(`/api/v1/student/submissions${queryString}`);
 }
 

@@ -1,6 +1,7 @@
 import { Send } from "lucide-react";
 
 import ImagebbUploader from "@/Components/ui/ImagebbUploader";
+import SearchableSelect from "@/Components/ui/SearchableSelect";
 import type {
   CreateInstitutionApplicationPayload,
   InstitutionType,
@@ -56,22 +57,19 @@ export default function InstitutionApplicationForm({
 
         <label className="space-y-1 text-sm">
           <span className="font-medium">Institution Type</span>
-          <select
+          <SearchableSelect
             value={form.institutionType}
-            onChange={(event) =>
+            onChange={(nextValue) =>
               onChange((prev) => ({
                 ...prev,
-                institutionType: event.target.value as InstitutionType,
+                institutionType: nextValue as InstitutionType,
               }))
             }
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
-          >
-            {institutionTypes.map((type) => (
-              <option key={type} value={type}>
-                {formatInstitutionType(type)}
-              </option>
-            ))}
-          </select>
+            options={institutionTypes.map((type) => ({ value: type, label: formatInstitutionType(type) }))}
+            placeholder="Select institution type"
+            searchPlaceholder="Search type..."
+            emptyText="No type found"
+          />
         </label>
 
         <div className="space-y-1 text-sm sm:col-span-2">

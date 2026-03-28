@@ -58,8 +58,9 @@ export interface CreatePostingPayload {
   departmentId?: string;
 }
 
-export async function getPostingOptions() {
-  const response = await fetch(getApiPath("/postings/options"), {
+export async function getPostingOptions(search?: string) {
+  const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+  const response = await fetch(getApiPath(`/postings/options${query}`), {
     method: "GET",
     credentials: "include",
     cache: "no-store",

@@ -66,6 +66,8 @@ type Props = Readonly<{
   onCreateSubAdmin: (payload: CreateInstitutionSubAdminPayload) => Promise<void>;
   faculties: InstitutionFacultyOption[];
   facultiesLoading: boolean;
+  facultySearchTerm: string;
+  onFacultySearchChange: (value: string) => void;
 }>;
 
 export default function AdminDashboard({
@@ -74,6 +76,8 @@ export default function AdminDashboard({
   onCreateSubAdmin,
   faculties,
   facultiesLoading,
+  facultySearchTerm,
+  onFacultySearchChange,
 }: Props) {
   const [activeSection, setActiveSection] = useState<AdminDashboardSection>("overview");
   const [showSidebar, setShowSidebar] = useState(true);
@@ -413,6 +417,8 @@ export default function AdminDashboard({
         onSubmit={onCreateSubAdmin}
         facultyOptions={faculties}
         facultyOptionsLoading={facultiesLoading}
+        facultySearchTerm={facultySearchTerm}
+        onFacultySearchChange={onFacultySearchChange}
       />
     );
   };

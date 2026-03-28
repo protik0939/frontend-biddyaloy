@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import SearchableSelect from "@/Components/ui/SearchableSelect";
 
 import {
   listStudentAdmissionPosts,
@@ -369,21 +370,21 @@ export default function StudentApplicationGate({
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <div className="space-y-1">
                     <p className="text-[11px] text-muted-foreground">Exam Name (dropdown)</p>
-                    <select
+                    <SearchableSelect
                       value={record.examName}
-                      onChange={(event) => updateAcademicRecord(index, "examName", event.target.value)}
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">Select exam</option>
-                      {EXAM_NAME_OPTIONS.map((item) => (
-                        <option key={item} value={item}>
-                          {item}
-                        </option>
-                      ))}
-                      {record.examName && !EXAM_NAME_OPTIONS.includes(record.examName) ? (
-                        <option value={record.examName}>{record.examName}</option>
-                      ) : null}
-                    </select>
+                      onChange={(nextValue) => updateAcademicRecord(index, "examName", nextValue)}
+                      options={[
+                        { value: "", label: "Select exam" },
+                        ...EXAM_NAME_OPTIONS.map((item) => ({ value: item, label: item })),
+                        ...(record.examName && !EXAM_NAME_OPTIONS.includes(record.examName)
+                          ? [{ value: record.examName, label: record.examName }]
+                          : []),
+                      ]}
+                      placeholder="Select exam"
+                      searchPlaceholder="Search exam..."
+                      emptyText="No exam found"
+                      className="text-sm"
+                    />
                     {getError(`academicRecords.${index}.examName`) ? (
                       <p className="text-xs text-destructive">{getError(`academicRecords.${index}.examName`)}</p>
                     ) : null}
@@ -404,21 +405,21 @@ export default function StudentApplicationGate({
 
                   <div className="space-y-1">
                     <p className="text-[11px] text-muted-foreground">Result (dropdown)</p>
-                    <select
+                    <SearchableSelect
                       value={record.result}
-                      onChange={(event) => updateAcademicRecord(index, "result", event.target.value)}
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">Select result</option>
-                      {RESULT_OPTIONS.map((item) => (
-                        <option key={item} value={item}>
-                          {item}
-                        </option>
-                      ))}
-                      {record.result && !RESULT_OPTIONS.includes(record.result) ? (
-                        <option value={record.result}>{record.result}</option>
-                      ) : null}
-                    </select>
+                      onChange={(nextValue) => updateAcademicRecord(index, "result", nextValue)}
+                      options={[
+                        { value: "", label: "Select result" },
+                        ...RESULT_OPTIONS.map((item) => ({ value: item, label: item })),
+                        ...(record.result && !RESULT_OPTIONS.includes(record.result)
+                          ? [{ value: record.result, label: record.result }]
+                          : []),
+                      ]}
+                      placeholder="Select result"
+                      searchPlaceholder="Search result..."
+                      emptyText="No result found"
+                      className="text-sm"
+                    />
                     {getError(`academicRecords.${index}.result`) ? (
                       <p className="text-xs text-destructive">{getError(`academicRecords.${index}.result`)}</p>
                     ) : null}
@@ -426,18 +427,18 @@ export default function StudentApplicationGate({
 
                   <div className="space-y-1">
                     <p className="text-[11px] text-muted-foreground">Passing Year (1950-2100)</p>
-                    <select
+                    <SearchableSelect
                       value={String(record.year)}
-                      onChange={(event) => updateAcademicRecord(index, "year", Number(event.target.value))}
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">Select year</option>
-                      {yearOptions.map((item) => (
-                        <option key={item} value={item}>
-                          {item}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(nextValue) => updateAcademicRecord(index, "year", Number(nextValue))}
+                      options={[
+                        { value: "", label: "Select year" },
+                        ...yearOptions.map((item) => ({ value: String(item), label: String(item) })),
+                      ]}
+                      placeholder="Select year"
+                      searchPlaceholder="Search year..."
+                      emptyText="No year found"
+                      className="text-sm"
+                    />
                     {getError(`academicRecords.${index}.year`) ? (
                       <p className="text-xs text-destructive">{getError(`academicRecords.${index}.year`)}</p>
                     ) : null}

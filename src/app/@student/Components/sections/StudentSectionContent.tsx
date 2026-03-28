@@ -4,6 +4,7 @@ import { Loader2, Pencil, Save, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import ImagebbUploader from "@/Components/ui/ImagebbUploader";
+import SearchableSelect from "@/Components/ui/SearchableSelect";
 
 import {
   type StudentClassworkType,
@@ -15,6 +16,7 @@ import {
   type StudentTimelineItem,
   StudentPortalService,
 } from "@/services/Student/studentPortal.service";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
 import { classworkTypeLabel, type StudentSection } from "./studentSections";
 
@@ -58,9 +60,16 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
 
   const [timelineSemesterId, setTimelineSemesterId] = useState("");
   const [timelineType, setTimelineType] = useState<"ALL" | StudentClassworkType>("ALL");
+  const [timelineSearch, setTimelineSearch] = useState("");
   const [coursesSemesterId, setCoursesSemesterId] = useState("");
+  const [coursesSearch, setCoursesSearch] = useState("");
   const [resultsSemesterId, setResultsSemesterId] = useState("");
   const [submissionsSemesterId, setSubmissionsSemesterId] = useState("");
+  const [submissionsSearch, setSubmissionsSearch] = useState("");
+
+  const debouncedTimelineSearch = useDebouncedValue(timelineSearch, 1000);
+  const debouncedCoursesSearch = useDebouncedValue(coursesSearch, 1000);
+  const debouncedSubmissionsSearch = useDebouncedValue(submissionsSearch, 1000);
 
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [loadingCourses, setLoadingCourses] = useState(false);
@@ -107,6 +116,7 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
       const data = await StudentPortalService.listTimeline({
         semesterId: timelineSemesterId || undefined,
         type: timelineType === "ALL" ? undefined : timelineType,
+        search: debouncedTimelineSearch || undefined,
       });
       setTimelineItems(data);
 
@@ -123,13 +133,14 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
     } finally {
       setLoadingTimeline(false);
     }
-  }, [submissionClassworkId, timelineSemesterId, timelineType]);
+  }, [debouncedTimelineSearch, submissionClassworkId, timelineSemesterId, timelineType]);
 
   const loadCourses = useCallback(async () => {
     setLoadingCourses(true);
     try {
       const data = await StudentPortalService.listRegisteredCourses({
         semesterId: coursesSemesterId || undefined,
+        search: debouncedCoursesSearch || undefined,
       });
       setRegisteredCourses(data);
     } catch (error) {
@@ -139,7 +150,7 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
     } finally {
       setLoadingCourses(false);
     }
-  }, [coursesSemesterId]);
+  }, [coursesSemesterId, debouncedCoursesSearch]);
 
   const loadResults = useCallback(async () => {
     if (!resultsSemesterId) {
@@ -165,6 +176,7 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
     try {
       const data = await StudentPortalService.listSubmissions({
         semesterId: submissionsSemesterId || undefined,
+        search: debouncedSubmissionsSearch || undefined,
       });
       setSubmissions(data);
     } catch (error) {
@@ -174,7 +186,7 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
     } finally {
       setLoadingSubmissions(false);
     }
-  }, [submissionsSemesterId]);
+  }, [debouncedSubmissionsSearch, submissionsSemesterId]);
 
   const loadFeeStatus = useCallback(async () => {
     try {
@@ -461,29 +473,35 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-base font-semibold sm:text-lg">Academic Timeline</h2>
             <div className="flex flex-wrap items-center gap-2">
-              <select
+              <SearchableSelect
                 value={timelineSemesterId}
-                onChange={(event) => setTimelineSemesterId(event.target.value)}
-                className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-              >
-                <option value="">All semesters</option>
-                {semesterOptions.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {formatSemester(item)}
-                  </option>
-                ))}
-              </select>
-              <select
+                onChange={setTimelineSemesterId}
+                options={[
+                  { value: "", label: "All semesters" },
+                  ...semesterOptions.map((item) => ({ value: item.id, label: formatSemester(item) })),
+                ]}
+                placeholder="All semesters"
+                searchPlaceholder="Search semester..."
+                emptyText="No semester found"
+                searchValue={timelineSearch}
+                onSearchValueChange={setTimelineSearch}
+                className="min-w-55"
+              />
+              <SearchableSelect
                 value={timelineType}
-                onChange={(event) => setTimelineType(event.target.value as "ALL" | StudentClassworkType)}
-                className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-              >
-                <option value="ALL">All types</option>
-                <option value="TASK">Task</option>
-                <option value="ASSIGNMENT">Assignment</option>
-                <option value="QUIZ">Quiz</option>
-                <option value="NOTICE">Notice</option>
-              </select>
+                onChange={(nextValue) => setTimelineType(nextValue as "ALL" | StudentClassworkType)}
+                options={[
+                  { value: "ALL", label: "All types" },
+                  { value: "TASK", label: "Task" },
+                  { value: "ASSIGNMENT", label: "Assignment" },
+                  { value: "QUIZ", label: "Quiz" },
+                  { value: "NOTICE", label: "Notice" },
+                ]}
+                placeholder="All types"
+                searchPlaceholder="Search type..."
+                emptyText="No type found"
+                className="min-w-45"
+              />
             </div>
           </div>
 
@@ -524,18 +542,22 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
       <article className="rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-base font-semibold sm:text-lg">Registered Courses</h2>
-          <select
-            value={coursesSemesterId}
-            onChange={(event) => setCoursesSemesterId(event.target.value)}
-            className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-          >
-            <option value="">All semesters</option>
-            {semesterOptions.map((item) => (
-              <option key={item.id} value={item.id}>
-                {formatSemester(item)}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-wrap items-center gap-2">
+            <SearchableSelect
+              value={coursesSemesterId}
+              onChange={setCoursesSemesterId}
+              options={[
+                { value: "", label: "All semesters" },
+                ...semesterOptions.map((item) => ({ value: item.id, label: formatSemester(item) })),
+              ]}
+              placeholder="All semesters"
+              searchPlaceholder="Search semester/course..."
+              emptyText="No semester found"
+              searchValue={coursesSearch}
+              onSearchValueChange={setCoursesSearch}
+              className="min-w-60"
+            />
+          </div>
         </div>
 
         {loadingCourses ? (
@@ -580,18 +602,18 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
         <article className="rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-base font-semibold sm:text-lg">Semester Results & Attendance</h2>
-            <select
+            <SearchableSelect
               value={resultsSemesterId}
-              onChange={(event) => setResultsSemesterId(event.target.value)}
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Select semester</option>
-              {semesterOptions.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {formatSemester(item)}
-                </option>
-              ))}
-            </select>
+              onChange={setResultsSemesterId}
+              options={[
+                { value: "", label: "Select semester" },
+                ...semesterOptions.map((item) => ({ value: item.id, label: formatSemester(item) })),
+              ]}
+              placeholder="Select semester"
+              searchPlaceholder="Search semester..."
+              emptyText="No semester found"
+              className="min-w-60"
+            />
           </div>
 
           {loadingResults ? (
@@ -666,31 +688,36 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
 
           <form className="mt-4 grid gap-3" onSubmit={handleCreateSubmission}>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <select
+              <SearchableSelect
                 value={submissionsSemesterId}
-                onChange={(event) => setSubmissionsSemesterId(event.target.value)}
-                className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-              >
-                <option value="">All semesters</option>
-                {semesterOptions.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {formatSemester(item)}
-                  </option>
-                ))}
-              </select>
+                onChange={setSubmissionsSemesterId}
+                options={[
+                  { value: "", label: "All semesters" },
+                  ...semesterOptions.map((item) => ({ value: item.id, label: formatSemester(item) })),
+                ]}
+                placeholder="All semesters"
+                searchPlaceholder="Search semester..."
+                emptyText="No semester found"
+                className="text-sm"
+              />
 
-              <select
+              <SearchableSelect
                 value={submissionClassworkId}
-                onChange={(event) => setSubmissionClassworkId(event.target.value)}
-                className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-              >
-                <option value="">Select classwork</option>
-                {submissionClassworkOptions.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {classworkTypeLabel[item.type]} • {item.title} ({item.section.name})
-                  </option>
-                ))}
-              </select>
+                onChange={setSubmissionClassworkId}
+                options={[
+                  { value: "", label: "Select classwork" },
+                  ...submissionClassworkOptions.map((item) => ({
+                    value: item.id,
+                    label: `${classworkTypeLabel[item.type]} • ${item.title} (${item.section.name})`,
+                  })),
+                ]}
+                placeholder="Select classwork"
+                searchPlaceholder="Search classwork..."
+                emptyText="No classwork found"
+                searchValue={submissionsSearch}
+                onSearchValueChange={setSubmissionsSearch}
+                className="md:col-span-2 text-sm"
+              />
             </div>
 
             <textarea

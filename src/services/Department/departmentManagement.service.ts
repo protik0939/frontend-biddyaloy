@@ -438,12 +438,14 @@ export const DepartmentManagementService = {
     return apiPatch<DepartmentProfile>("/api/v1/department/profile", payload);
   },
 
-  listSemesters() {
-    return apiGet<Semester[]>("/api/v1/department/semesters");
+  listSemesters(search?: string) {
+    const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+    return apiGet<Semester[]>(`/api/v1/department/semesters${query}`);
   },
 
-  listBatches() {
-    return apiGet<Batch[]>("/api/v1/department/batches");
+  listBatches(search?: string) {
+    const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+    return apiGet<Batch[]>(`/api/v1/department/batches${query}`);
   },
 
   createBatch(payload: { name: string; description?: string }) {
@@ -462,8 +464,9 @@ export const DepartmentManagementService = {
     return apiPost<Semester>("/api/v1/department/semesters", payload);
   },
 
-  listSections() {
-    return apiGet<Section[]>("/api/v1/department/sections");
+  listSections(search?: string) {
+    const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+    return apiGet<Section[]>(`/api/v1/department/sections${query}`);
   },
 
   createSection(payload: {
@@ -493,12 +496,14 @@ export const DepartmentManagementService = {
     return apiDelete<{ id: string }>(`/api/v1/department/sections/${sectionId}`);
   },
 
-  listCourses() {
-    return apiGet<Course[]>("/api/v1/department/courses");
+  listCourses(search?: string) {
+    const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+    return apiGet<Course[]>(`/api/v1/department/courses${query}`);
   },
 
-  listPrograms() {
-    return apiGet<Program[]>("/api/v1/department/programs");
+  listPrograms(search?: string) {
+    const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+    return apiGet<Program[]>(`/api/v1/department/programs${query}`);
   },
 
   createCourse(payload: {
@@ -527,12 +532,14 @@ export const DepartmentManagementService = {
     return apiDelete<{ id: string }>(`/api/v1/department/courses/${courseId}`);
   },
 
-  listCourseRegistrations() {
-    return apiGet<CourseRegistration[]>("/api/v1/department/course-registrations");
+  listCourseRegistrations(search?: string) {
+    const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+    return apiGet<CourseRegistration[]>(`/api/v1/department/course-registrations${query}`);
   },
 
-  listSectionCourseTeacherAssignments() {
-    return apiGet<SectionCourseTeacherAssignment[]>("/api/v1/department/course-teacher-assignments");
+  listSectionCourseTeacherAssignments(search?: string) {
+    const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+    return apiGet<SectionCourseTeacherAssignment[]>(`/api/v1/department/course-teacher-assignments${query}`);
   },
 
   upsertSectionCourseTeacherAssignment(payload: {
@@ -577,8 +584,9 @@ export const DepartmentManagementService = {
     );
   },
 
-  listTeachers() {
-    return apiGet<Teacher[]>("/api/v1/department/teachers");
+  listTeachers(search?: string) {
+    const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+    return apiGet<Teacher[]>(`/api/v1/department/teachers${query}`);
   },
 
   createTeacher(payload: {
@@ -599,8 +607,9 @@ export const DepartmentManagementService = {
     });
   },
 
-  listStudents() {
-    return apiGet<Student[]>("/api/v1/department/students");
+  listStudents(search?: string) {
+    const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+    return apiGet<Student[]>(`/api/v1/department/students${query}`);
   },
 
   createStudent(payload: {

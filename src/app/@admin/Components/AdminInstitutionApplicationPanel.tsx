@@ -25,6 +25,7 @@ import InstitutionApplicationForm from "./AdminInstitutionApplicationPanel/Insti
 import { emptyForm } from "./AdminInstitutionApplicationPanel/utils";
 import ThemeToggle from "@/Components/ThemeToggle";
 import LogoutButton from "@/Components/LogoutButton";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
 export default function AdminInstitutionApplicationPanel() {
   const [applications, setApplications] = useState<InstitutionApplication[]>([]);
@@ -34,6 +35,8 @@ export default function AdminInstitutionApplicationPanel() {
   const [showApprovedBanner, setShowApprovedBanner] = useState(true);
   const [faculties, setFaculties] = useState<InstitutionFacultyOption[]>([]);
   const [facultiesLoading, setFacultiesLoading] = useState(false);
+  const [facultySearchTerm, setFacultySearchTerm] = useState("");
+  const debouncedFacultySearchTerm = useDebouncedValue(facultySearchTerm, 1000);
 
   const latest = applications[0];
   const isApproved = latest?.status === "APPROVED";
@@ -156,7 +159,7 @@ export default function AdminInstitutionApplicationPanel() {
     const loadFaculties = async () => {
       setFacultiesLoading(true);
       try {
-        const items = await listInstitutionFaculties();
+        const items = await listInstitutionFaculties(debouncedFacultySearchTerm);
         if (!cancelled) {
           setFaculties(items);
         }
@@ -177,7 +180,7 @@ export default function AdminInstitutionApplicationPanel() {
     return () => {
       cancelled = true;
     };
-  }, [isApproved]);
+  }, [debouncedFacultySearchTerm, isApproved]);
 
   if (loading) {
     return (
@@ -242,6 +245,8 @@ export default function AdminInstitutionApplicationPanel() {
           onCreateSubAdmin={handleCreateSubAdminAccount}
           faculties={faculties}
           facultiesLoading={facultiesLoading}
+          facultySearchTerm={facultySearchTerm}
+          onFacultySearchChange={setFacultySearchTerm}
         />
       )}
 

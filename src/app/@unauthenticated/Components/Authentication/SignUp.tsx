@@ -3,6 +3,7 @@
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import SearchableSelect from "@/Components/ui/SearchableSelect";
 import { signupAction } from "./auth-actions";
 
 type SignUpProps = {
@@ -25,6 +26,7 @@ type SignUpProps = {
 export default function SignUp({ errorMessage, fieldErrors, fieldValues }: Readonly<SignUpProps>) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState(fieldValues?.role ?? "");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -98,19 +100,22 @@ export default function SignUp({ errorMessage, fieldErrors, fieldValues }: Reado
                 </label>
                 <label className="block text-sm font-medium text-foreground">
                   <span>Account type</span>
-                  <select
+                  <SearchableSelect
                     name="role"
                     required
-                    defaultValue={fieldValues?.role ?? ""}
-                    className="mt-2 w-full rounded-xl border border-border/70 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
-                  >
-                    <option value="" disabled>
-                      Select account type
-                    </option>
-                    <option value="ADMIN">Buying a portal for my institution</option>
-                    <option value="TEACHER">Becoming a teacher to apply</option>
-                    <option value="STUDENT">Becoming a student to be admitted</option>
-                  </select>
+                    value={role}
+                    onChange={setRole}
+                    options={[
+                      { value: "", label: "Select account type" },
+                      { value: "ADMIN", label: "Buying a portal for my institution" },
+                      { value: "TEACHER", label: "Becoming a teacher to apply" },
+                      { value: "STUDENT", label: "Becoming a student to be admitted" },
+                    ]}
+                    placeholder="Select account type"
+                    searchPlaceholder="Search account type..."
+                    emptyText="No account type found"
+                    className="mt-2"
+                  />
                   {fieldErrors?.role ? (
                     <p className="mt-2 text-xs text-red-700">{fieldErrors.role}</p>
                   ) : null}

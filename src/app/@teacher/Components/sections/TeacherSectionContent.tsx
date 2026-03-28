@@ -4,6 +4,7 @@ import { Loader2, Trash2, Pencil, Save, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import ImagebbUploader from "@/Components/ui/ImagebbUploader";
+import SearchableSelect from "@/Components/ui/SearchableSelect";
 
 import {
   type AttendanceStatus,
@@ -17,6 +18,7 @@ import {
   type TeacherSectionMarkRow,
   TeacherPortalService,
 } from "@/services/Teacher/teacherPortal.service";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
 import { classworkTypeLabel, type TeacherSection } from "./teacherSections";
 
@@ -79,6 +81,8 @@ export default function TeacherSectionContent({ section }: Readonly<TeacherSecti
   const [profileGender, setProfileGender] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [sections, setSections] = useState<TeacherAssignedSection[]>([]);
+  const [sectionSearch, setSectionSearch] = useState("");
+  const debouncedSectionSearch = useDebouncedValue(sectionSearch, 1000);
 
   const [classworks, setClassworks] = useState<TeacherClasswork[]>([]);
   const [classworkSectionId, setClassworkSectionId] = useState("");
@@ -129,7 +133,7 @@ export default function TeacherSectionContent({ section }: Readonly<TeacherSecti
   }, [syncProfileInputs]);
 
   const reloadSections = useCallback(async () => {
-    const data = await TeacherPortalService.listSectionsWithStudents();
+    const data = await TeacherPortalService.listSectionsWithStudents(debouncedSectionSearch);
     setSections(data);
     if (!classworkSectionId && data[0]) {
       setClassworkSectionId(data[0].section.id);
@@ -140,7 +144,7 @@ export default function TeacherSectionContent({ section }: Readonly<TeacherSecti
     if (!marksSectionId && data[0]) {
       setMarksSectionId(data[0].section.id);
     }
-  }, [attendanceSectionId, classworkSectionId, marksSectionId]);
+  }, [attendanceSectionId, classworkSectionId, debouncedSectionSearch, marksSectionId]);
 
   const reloadClassworks = async (sectionId?: string) => {
     const data = await TeacherPortalService.listClassworks(
@@ -241,6 +245,14 @@ export default function TeacherSectionContent({ section }: Readonly<TeacherSecti
       cancelled = true;
     };
   }, [loadProfile, reloadSections]);
+
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
+
+    void reloadSections();
+  }, [debouncedSectionSearch, loading, reloadSections]);
 
   const handleSaveProfile = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -460,7 +472,7 @@ export default function TeacherSectionContent({ section }: Readonly<TeacherSecti
     setMarkDrafts((prev) => ({
       ...prev,
       [courseRegistrationId]: {
-        ...(prev[courseRegistrationId] ?? {}),
+        ...prev[courseRegistrationId],
         [key]: value,
       },
     }));
@@ -723,32 +735,31 @@ export default function TeacherSectionContent({ section }: Readonly<TeacherSecti
           <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={handleCreateClasswork}>
             <label className="space-y-1 text-sm">
               <span className="font-medium">Section</span>
-              <select
+              <SearchableSelect
                 value={classworkSectionId}
-                onChange={(event) => setClassworkSectionId(event.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2"
-              >
-                {sections.map((item) => (
-                  <option key={item.section.id} value={item.section.id}>
-                    {item.section.name} - {formatSeasonYear(item.section.semester)}
-                  </option>
-                ))}
-              </select>
+                onChange={setClassworkSectionId}
+                options={sections.map((item) => ({
+                  value: item.section.id,
+                  label: `${item.section.name} - ${formatSeasonYear(item.section.semester)}`,
+                }))}
+                placeholder="Select section"
+                searchPlaceholder="Search section..."
+                emptyText="No section found"
+                searchValue={sectionSearch}
+                onSearchValueChange={setSectionSearch}
+              />
             </label>
 
             <label className="space-y-1 text-sm">
               <span className="font-medium">Type</span>
-              <select
+              <SearchableSelect
                 value={classworkType}
-                onChange={(event) => setClassworkType(event.target.value as TeacherClassworkType)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2"
-              >
-                {CLASSWORK_TYPES.map((item) => (
-                  <option key={item} value={item}>
-                    {classworkTypeLabel[item]}
-                  </option>
-                ))}
-              </select>
+                onChange={(nextValue) => setClassworkType(nextValue as TeacherClassworkType)}
+                options={CLASSWORK_TYPES.map((item) => ({ value: item, label: classworkTypeLabel[item] }))}
+                placeholder="Select type"
+                searchPlaceholder="Search type..."
+                emptyText="No type found"
+              />
             </label>
 
             <label className="space-y-1 text-sm md:col-span-2">
@@ -813,17 +824,14 @@ export default function TeacherSectionContent({ section }: Readonly<TeacherSecti
                       <div className="grid gap-2 md:grid-cols-2">
                         <label className="space-y-1 text-sm">
                           <span className="font-medium">Type</span>
-                          <select
+                          <SearchableSelect
                             value={editingClassworkType}
-                            onChange={(event) => setEditingClassworkType(event.target.value as TeacherClassworkType)}
-                            className="w-full rounded-lg border border-border bg-background px-3 py-2"
-                          >
-                            {CLASSWORK_TYPES.map((type) => (
-                              <option key={type} value={type}>
-                                {classworkTypeLabel[type]}
-                              </option>
-                            ))}
-                          </select>
+                            onChange={(nextValue) => setEditingClassworkType(nextValue as TeacherClassworkType)}
+                            options={CLASSWORK_TYPES.map((type) => ({ value: type, label: classworkTypeLabel[type] }))}
+                            placeholder="Select type"
+                            searchPlaceholder="Search type..."
+                            emptyText="No type found"
+                          />
                         </label>
 
                         <label className="space-y-1 text-sm">
@@ -936,17 +944,19 @@ export default function TeacherSectionContent({ section }: Readonly<TeacherSecti
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             <label className="space-y-1 text-sm md:col-span-2">
               <span className="font-medium">Section</span>
-              <select
+              <SearchableSelect
                 value={attendanceSectionId}
-                onChange={(event) => setAttendanceSectionId(event.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2"
-              >
-                {sections.map((item) => (
-                  <option key={item.section.id} value={item.section.id}>
-                    {item.section.name} - {formatSeasonYear(item.section.semester)}
-                  </option>
-                ))}
-              </select>
+                onChange={setAttendanceSectionId}
+                options={sections.map((item) => ({
+                  value: item.section.id,
+                  label: `${item.section.name} - ${formatSeasonYear(item.section.semester)}`,
+                }))}
+                placeholder="Select section"
+                searchPlaceholder="Search section..."
+                emptyText="No section found"
+                searchValue={sectionSearch}
+                onSearchValueChange={setSectionSearch}
+              />
             </label>
 
             <label className="space-y-1 text-sm">
@@ -1004,19 +1014,23 @@ export default function TeacherSectionContent({ section }: Readonly<TeacherSecti
                         {item.course.courseCode} - {item.course.courseTitle}
                       </td>
                       <td className="px-2 py-2">
-                        <select
+                        <SearchableSelect
                           value={attendanceStatusMap[item.courseRegistrationId] ?? "ABSENT"}
-                          onChange={(event) =>
+                          onChange={(nextValue) =>
                             setAttendanceStatusMap((prev) => ({
                               ...prev,
-                              [item.courseRegistrationId]: event.target.value as AttendanceStatus,
+                              [item.courseRegistrationId]: nextValue as AttendanceStatus,
                             }))
                           }
-                          className="rounded-lg border border-border bg-background px-2 py-1"
-                        >
-                          <option value="PRESENT">Present</option>
-                          <option value="ABSENT">Absent</option>
-                        </select>
+                          options={[
+                            { value: "PRESENT", label: "Present" },
+                            { value: "ABSENT", label: "Absent" },
+                          ]}
+                          placeholder="Select status"
+                          searchPlaceholder="Search status..."
+                          emptyText="No status found"
+                          className="min-w-36"
+                        />
                       </td>
                     </tr>
                   ))}
@@ -1041,17 +1055,19 @@ export default function TeacherSectionContent({ section }: Readonly<TeacherSecti
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <label className="space-y-1 text-sm">
               <span className="font-medium">Section</span>
-              <select
+              <SearchableSelect
                 value={marksSectionId}
-                onChange={(event) => setMarksSectionId(event.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2"
-              >
-                {sections.map((item) => (
-                  <option key={item.section.id} value={item.section.id}>
-                    {item.section.name} - {formatSeasonYear(item.section.semester)}
-                  </option>
-                ))}
-              </select>
+                onChange={setMarksSectionId}
+                options={sections.map((item) => ({
+                  value: item.section.id,
+                  label: `${item.section.name} - ${formatSeasonYear(item.section.semester)}`,
+                }))}
+                placeholder="Select section"
+                searchPlaceholder="Search section..."
+                emptyText="No section found"
+                searchValue={sectionSearch}
+                onSearchValueChange={setSectionSearch}
+              />
             </label>
 
             <article className="rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-xs text-muted-foreground">

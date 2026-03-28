@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import SearchableSelect from "@/Components/ui/SearchableSelect";
 
 import {
   listTeacherJobPosts,
@@ -13,7 +14,6 @@ import {
 import {
   type TeacherApplicationProfile,
   type TeacherAcademicRecord,
-  type TeacherExperienceRecord,
   type TeacherJobApplication,
   TeacherPortalService,
 } from "@/services/Teacher/teacherPortal.service";
@@ -485,18 +485,18 @@ export default function TeacherApplicationGate({
               <div key={`academic-${index}`} className="grid grid-cols-1 gap-2 md:grid-cols-4">
                 <div className="space-y-1">
                   <p className="text-[11px] text-muted-foreground">Degree (required)</p>
-                  <select
+                  <SearchableSelect
                     value={item.degree}
-                    onChange={(event) => updateAcademicRecord(index, "degree", event.target.value)}
-                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">Select degree</option>
-                    {DEGREE_OPTIONS.map((degree) => (
-                      <option key={degree} value={degree}>
-                        {degree}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(nextValue) => updateAcademicRecord(index, "degree", nextValue)}
+                    options={[
+                      { value: "", label: "Select degree" },
+                      ...DEGREE_OPTIONS.map((degree) => ({ value: degree, label: degree })),
+                    ]}
+                    placeholder="Select degree"
+                    searchPlaceholder="Search degree..."
+                    emptyText="No degree found"
+                    className="text-sm"
+                  />
                   {getError(`academicRecords.${index}.degree`) ? (
                     <p className="text-xs text-destructive">{getError(`academicRecords.${index}.degree`)}</p>
                   ) : null}

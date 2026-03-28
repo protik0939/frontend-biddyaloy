@@ -23,6 +23,8 @@ import {
 } from "@/services/Department/departmentManagement.service";
 import ImagebbUploader from "@/Components/ui/ImagebbUploader";
 import PostingManagementPanel from "@/Components/PostingManagement/PostingManagementPanel";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import SearchableSelect from "@/Components/ui/SearchableSelect";
 
 import { type DepartmentSection } from "./departmentSections";
 
@@ -75,6 +77,7 @@ export default function DepartmentSectionContent({
   const [semesterStartDate, setSemesterStartDate] = useState("");
   const [semesterEndDate, setSemesterEndDate] = useState("");
   const [creatingSemester, setCreatingSemester] = useState(false);
+  const [semesterSearch, setSemesterSearch] = useState("");
 
   const [batches, setBatches] = useState<Batch[]>([]);
   const [batchName, setBatchName] = useState("");
@@ -85,6 +88,7 @@ export default function DepartmentSectionContent({
   const [editingBatchDescription, setEditingBatchDescription] = useState("");
   const [updatingBatchId, setUpdatingBatchId] = useState("");
   const [deletingBatchId, setDeletingBatchId] = useState("");
+  const [batchSearch, setBatchSearch] = useState("");
 
   const [sections, setSections] = useState<Section[]>([]);
   const [sectionName, setSectionName] = useState("");
@@ -101,6 +105,7 @@ export default function DepartmentSectionContent({
   const [editingSectionDescription, setEditingSectionDescription] = useState("");
   const [updatingSectionId, setUpdatingSectionId] = useState("");
   const [deletingSectionId, setDeletingSectionId] = useState("");
+  const [sectionSearch, setSectionSearch] = useState("");
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [courseCode, setCourseCode] = useState("");
@@ -115,6 +120,7 @@ export default function DepartmentSectionContent({
   const [editingCourseCredits, setEditingCourseCredits] = useState("");
   const [updatingCourseId, setUpdatingCourseId] = useState("");
   const [deletingCourseId, setDeletingCourseId] = useState("");
+  const [courseSearch, setCourseSearch] = useState("");
 
   const [courseRegistrations, setCourseRegistrations] = useState<CourseRegistration[]>([]);
   const [courseTeacherAssignments, setCourseTeacherAssignments] = useState<
@@ -150,6 +156,7 @@ export default function DepartmentSectionContent({
   const [teacherDesignation, setTeacherDesignation] = useState("");
   const [creatingTeacher, setCreatingTeacher] = useState(false);
   const [updatingTeacherId, setUpdatingTeacherId] = useState("");
+  const [teacherSearch, setTeacherSearch] = useState("");
 
   const [students, setStudents] = useState<Student[]>([]);
   const [studentName, setStudentName] = useState("");
@@ -158,6 +165,7 @@ export default function DepartmentSectionContent({
   const [studentId, setStudentId] = useState("");
   const [creatingStudent, setCreatingStudent] = useState(false);
   const [updatingStudentId, setUpdatingStudentId] = useState("");
+  const [studentSearch, setStudentSearch] = useState("");
 
   const [teacherApplications, setTeacherApplications] = useState<DepartmentTeacherJobApplication[]>([]);
   const [teacherApplicationFilter, setTeacherApplicationFilter] = useState<
@@ -188,6 +196,13 @@ export default function DepartmentSectionContent({
   const [reviewStudentBio, setReviewStudentBio] = useState("");
 
   const [portalReady, setPortalReady] = useState(false);
+
+  const debouncedSemesterSearch = useDebouncedValue(semesterSearch, 1000);
+  const debouncedBatchSearch = useDebouncedValue(batchSearch, 1000);
+  const debouncedSectionSearch = useDebouncedValue(sectionSearch, 1000);
+  const debouncedCourseSearch = useDebouncedValue(courseSearch, 1000);
+  const debouncedTeacherSearch = useDebouncedValue(teacherSearch, 1000);
+  const debouncedStudentSearch = useDebouncedValue(studentSearch, 1000);
 
   const canCreateSemester =
     semesterName.trim().length >= 2 &&
@@ -328,8 +343,8 @@ export default function DepartmentSectionContent({
     editingRegistrationStudentProfileId,
   ]);
 
-  const reloadSemesters = async () => {
-    const data = await DepartmentManagementService.listSemesters();
+  const reloadSemesters = async (search?: string) => {
+    const data = await DepartmentManagementService.listSemesters(search ?? debouncedSemesterSearch);
     setSemesters(data);
     if (!sectionSemesterId && data.length > 0) {
       setSectionSemesterId(data[0].id);
@@ -342,8 +357,8 @@ export default function DepartmentSectionContent({
     }
   };
 
-  const reloadBatches = async () => {
-    const data = await DepartmentManagementService.listBatches();
+  const reloadBatches = async (search?: string) => {
+    const data = await DepartmentManagementService.listBatches(search ?? debouncedBatchSearch);
     setBatches(data);
     if (!sectionBatchId && data.length > 0) {
       setSectionBatchId(data[0].id);
@@ -356,13 +371,13 @@ export default function DepartmentSectionContent({
     }
   };
 
-  const reloadSections = async () => {
-    const data = await DepartmentManagementService.listSections();
+  const reloadSections = async (search?: string) => {
+    const data = await DepartmentManagementService.listSections(search ?? debouncedSectionSearch);
     setSections(data);
   };
 
-  const reloadCourses = async () => {
-    const data = await DepartmentManagementService.listCourses();
+  const reloadCourses = async (search?: string) => {
+    const data = await DepartmentManagementService.listCourses(search ?? debouncedCourseSearch);
     setCourses(data);
   };
 
@@ -376,13 +391,13 @@ export default function DepartmentSectionContent({
     setCourseTeacherAssignments(data);
   };
 
-  const reloadTeachers = async () => {
-    const data = await DepartmentManagementService.listTeachers();
+  const reloadTeachers = async (search?: string) => {
+    const data = await DepartmentManagementService.listTeachers(search ?? debouncedTeacherSearch);
     setTeachers(data);
   };
 
-  const reloadStudents = async () => {
-    const data = await DepartmentManagementService.listStudents();
+  const reloadStudents = async (search?: string) => {
+    const data = await DepartmentManagementService.listStudents(search ?? debouncedStudentSearch);
     setStudents(data);
   };
 
@@ -639,6 +654,48 @@ export default function DepartmentSectionContent({
       setRegistrationCourseId(courses[0].id);
     }
   }, [courses, registrationCourseId]);
+
+  useEffect(() => {
+    if (!["sections", "courseTeacherAssignments", "courseRegistrations"].includes(section)) {
+      return;
+    }
+    void reloadSemesters();
+  }, [debouncedSemesterSearch, section]);
+
+  useEffect(() => {
+    if (!["sections", "courseTeacherAssignments", "courseRegistrations", "batches"].includes(section)) {
+      return;
+    }
+    void reloadBatches();
+  }, [debouncedBatchSearch, section]);
+
+  useEffect(() => {
+    if (!["sections", "courseTeacherAssignments", "courseRegistrations"].includes(section)) {
+      return;
+    }
+    void reloadSections();
+  }, [debouncedSectionSearch, section]);
+
+  useEffect(() => {
+    if (!["courses", "courseTeacherAssignments", "courseRegistrations"].includes(section)) {
+      return;
+    }
+    void reloadCourses();
+  }, [debouncedCourseSearch, section]);
+
+  useEffect(() => {
+    if (!["teachers", "teacherApplications", "courseTeacherAssignments"].includes(section)) {
+      return;
+    }
+    void reloadTeachers();
+  }, [debouncedTeacherSearch, section]);
+
+  useEffect(() => {
+    if (!["students", "studentApplications", "courseRegistrations"].includes(section)) {
+      return;
+    }
+    void reloadStudents();
+  }, [debouncedStudentSearch, section]);
 
   const onUpdateProfile = async (event: { preventDefault: () => void }) => {
     event.preventDefault();
@@ -1713,30 +1770,28 @@ export default function DepartmentSectionContent({
               placeholder="Section name"
               className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
             />
-            <select
+            <SearchableSelect
               value={sectionSemesterId}
-              onChange={(event) => setSectionSemesterId(event.target.value)}
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Select semester</option>
-              {semesters.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {formatSeasonYear(item)}
-                </option>
-              ))}
-            </select>
-            <select
+              onChange={setSectionSemesterId}
+              options={semesters.map((item) => ({ value: item.id, label: formatSeasonYear(item) }))}
+              placeholder="Select semester"
+              searchPlaceholder="Search semester..."
+              emptyText="No semester found"
+              searchValue={semesterSearch}
+              onSearchValueChange={setSemesterSearch}
+              className="text-sm"
+            />
+            <SearchableSelect
               value={sectionBatchId}
-              onChange={(event) => setSectionBatchId(event.target.value)}
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Select batch</option>
-              {batches.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+              onChange={setSectionBatchId}
+              options={batches.map((item) => ({ value: item.id, label: item.name }))}
+              placeholder="Select batch"
+              searchPlaceholder="Search batch..."
+              emptyText="No batch found"
+              searchValue={batchSearch}
+              onSearchValueChange={setBatchSearch}
+              className="text-sm"
+            />
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <input
@@ -1773,30 +1828,26 @@ export default function DepartmentSectionContent({
                       className="rounded-lg border border-border bg-background px-2 py-1"
                       placeholder="Section name"
                     />
-                    <select
+                    <SearchableSelect
                       value={editingSectionSemesterId}
-                      onChange={(event) => setEditingSectionSemesterId(event.target.value)}
-                      className="rounded-lg border border-border bg-background px-2 py-1"
-                    >
-                      <option value="">Select semester</option>
-                      {semesters.map((semester) => (
-                        <option key={semester.id} value={semester.id}>
-                          {formatSeasonYear(semester)}
-                        </option>
-                      ))}
-                    </select>
-                    <select
+                      onChange={setEditingSectionSemesterId}
+                      options={semesters.map((semester) => ({ value: semester.id, label: formatSeasonYear(semester) }))}
+                      placeholder="Select semester"
+                      searchPlaceholder="Search semester..."
+                      emptyText="No semester found"
+                      searchValue={semesterSearch}
+                      onSearchValueChange={setSemesterSearch}
+                    />
+                    <SearchableSelect
                       value={editingSectionBatchId}
-                      onChange={(event) => setEditingSectionBatchId(event.target.value)}
-                      className="rounded-lg border border-border bg-background px-2 py-1"
-                    >
-                      <option value="">Select batch</option>
-                      {batches.map((batch) => (
-                        <option key={batch.id} value={batch.id}>
-                          {batch.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setEditingSectionBatchId}
+                      options={batches.map((batch) => ({ value: batch.id, label: batch.name }))}
+                      placeholder="Select batch"
+                      searchPlaceholder="Search batch..."
+                      emptyText="No batch found"
+                      searchValue={batchSearch}
+                      onSearchValueChange={setBatchSearch}
+                    />
                   </div>
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                     <input
@@ -2005,70 +2056,65 @@ export default function DepartmentSectionContent({
         <form className="space-y-3 rounded-xl border border-border/70 bg-background/60 p-4" onSubmit={onAssignTeacherToCourseSection}>
           <p className="text-sm font-medium">Assign Teacher To Course + Section</p>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-            <select
+            <SearchableSelect
               value={assignmentSemesterId}
-              onChange={(event) => setAssignmentSemesterId(event.target.value)}
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Select semester</option>
-              {semesters.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {formatSeasonYear(item)}
-                </option>
-              ))}
-            </select>
+              onChange={setAssignmentSemesterId}
+              options={semesters.map((item) => ({ value: item.id, label: formatSeasonYear(item) }))}
+              placeholder="Select semester"
+              searchPlaceholder="Search semester..."
+              emptyText="No semester found"
+              searchValue={semesterSearch}
+              onSearchValueChange={setSemesterSearch}
+              className="text-sm"
+            />
 
-            <select
+            <SearchableSelect
               value={assignmentBatchId}
-              onChange={(event) => setAssignmentBatchId(event.target.value)}
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Select batch</option>
-              {batches.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+              onChange={setAssignmentBatchId}
+              options={batches.map((item) => ({ value: item.id, label: item.name }))}
+              placeholder="Select batch"
+              searchPlaceholder="Search batch..."
+              emptyText="No batch found"
+              searchValue={batchSearch}
+              onSearchValueChange={setBatchSearch}
+              className="text-sm"
+            />
 
-            <select
+            <SearchableSelect
               value={assignmentSectionId}
-              onChange={(event) => setAssignmentSectionId(event.target.value)}
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Select section</option>
-              {filteredSectionsForTeacherAssignment.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+              onChange={setAssignmentSectionId}
+              options={filteredSectionsForTeacherAssignment.map((item) => ({ value: item.id, label: item.name }))}
+              placeholder="Select section"
+              searchPlaceholder="Search section..."
+              emptyText="No section found"
+              searchValue={sectionSearch}
+              onSearchValueChange={setSectionSearch}
+              className="text-sm"
+            />
 
-            <select
+            <SearchableSelect
               value={assignmentCourseId}
-              onChange={(event) => setAssignmentCourseId(event.target.value)}
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Select course</option>
-              {courses.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.courseCode} - {item.courseTitle}
-                </option>
-              ))}
-            </select>
+              onChange={setAssignmentCourseId}
+              options={courses.map((item) => ({ value: item.id, label: `${item.courseCode} - ${item.courseTitle}` }))}
+              placeholder="Select course"
+              searchPlaceholder="Search course..."
+              emptyText="No course found"
+              searchValue={courseSearch}
+              onSearchValueChange={setCourseSearch}
+              className="text-sm"
+            />
 
-            <select
+            <SearchableSelect
               value={assignmentTeacherProfileId}
-              onChange={(event) => setAssignmentTeacherProfileId(event.target.value)}
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Select teacher</option>
-              {teachers.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.user.name} ({item.teacherInitial})
-                </option>
-              ))}
-            </select>
+              onChange={setAssignmentTeacherProfileId}
+              options={teachers.map((item) => ({ value: item.id, label: `${item.user.name} (${item.teacherInitial})` }))}
+              placeholder="Select teacher"
+              searchPlaceholder="Search teacher..."
+              emptyText="No teacher found"
+              searchValue={teacherSearch}
+              onSearchValueChange={setTeacherSearch}
+              className="text-sm"
+            />
           </div>
 
           <button
@@ -2125,70 +2171,65 @@ export default function DepartmentSectionContent({
 
         <form className="space-y-3" onSubmit={onCreateCourseRegistration}>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-            <select
+            <SearchableSelect
               value={registrationSemesterId}
-              onChange={(event) => setRegistrationSemesterId(event.target.value)}
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Select semester</option>
-              {semesters.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {formatSeasonYear(item)}
-                </option>
-              ))}
-            </select>
+              onChange={setRegistrationSemesterId}
+              options={semesters.map((item) => ({ value: item.id, label: formatSeasonYear(item) }))}
+              placeholder="Select semester"
+              searchPlaceholder="Search semester..."
+              emptyText="No semester found"
+              searchValue={semesterSearch}
+              onSearchValueChange={setSemesterSearch}
+              className="text-sm"
+            />
 
-            <select
+            <SearchableSelect
               value={registrationBatchId}
-              onChange={(event) => setRegistrationBatchId(event.target.value)}
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Select batch</option>
-              {batches.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+              onChange={setRegistrationBatchId}
+              options={batches.map((item) => ({ value: item.id, label: item.name }))}
+              placeholder="Select batch"
+              searchPlaceholder="Search batch..."
+              emptyText="No batch found"
+              searchValue={batchSearch}
+              onSearchValueChange={setBatchSearch}
+              className="text-sm"
+            />
 
-            <select
+            <SearchableSelect
               value={registrationSectionId}
-              onChange={(event) => setRegistrationSectionId(event.target.value)}
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Select section</option>
-              {filteredSectionsForRegistration.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+              onChange={setRegistrationSectionId}
+              options={filteredSectionsForRegistration.map((item) => ({ value: item.id, label: item.name }))}
+              placeholder="Select section"
+              searchPlaceholder="Search section..."
+              emptyText="No section found"
+              searchValue={sectionSearch}
+              onSearchValueChange={setSectionSearch}
+              className="text-sm"
+            />
 
-            <select
+            <SearchableSelect
               value={registrationCourseId}
-              onChange={(event) => setRegistrationCourseId(event.target.value)}
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Select course</option>
-              {courses.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.courseCode} - {item.courseTitle}
-                </option>
-              ))}
-            </select>
+              onChange={setRegistrationCourseId}
+              options={courses.map((item) => ({ value: item.id, label: `${item.courseCode} - ${item.courseTitle}` }))}
+              placeholder="Select course"
+              searchPlaceholder="Search course..."
+              emptyText="No course found"
+              searchValue={courseSearch}
+              onSearchValueChange={setCourseSearch}
+              className="text-sm"
+            />
 
-            <select
+            <SearchableSelect
               value={registrationStudentProfileId}
-              onChange={(event) => setRegistrationStudentProfileId(event.target.value)}
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Select student</option>
-              {students.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.user.name} ({item.studentsId})
-                </option>
-              ))}
-            </select>
+              onChange={setRegistrationStudentProfileId}
+              options={students.map((item) => ({ value: item.id, label: `${item.user.name} (${item.studentsId})` }))}
+              placeholder="Select student"
+              searchPlaceholder="Search student..."
+              emptyText="No student found"
+              searchValue={studentSearch}
+              onSearchValueChange={setStudentSearch}
+              className="text-sm"
+            />
           </div>
 
           <button
@@ -2206,68 +2247,56 @@ export default function DepartmentSectionContent({
               {editingCourseRegistrationId === item.id ? (
                 <div className="space-y-2">
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
-                    <select
+                    <SearchableSelect
                       value={editingRegistrationSemesterId}
-                      onChange={(event) => setEditingRegistrationSemesterId(event.target.value)}
-                      className="rounded-lg border border-border bg-background px-2 py-1"
-                    >
-                      <option value="">Select semester</option>
-                      {semesters.map((semester) => (
-                        <option key={semester.id} value={semester.id}>
-                          {formatSeasonYear(semester)}
-                        </option>
-                      ))}
-                    </select>
-                    <select
+                      onChange={setEditingRegistrationSemesterId}
+                      options={semesters.map((semester) => ({ value: semester.id, label: formatSeasonYear(semester) }))}
+                      placeholder="Select semester"
+                      searchPlaceholder="Search semester..."
+                      emptyText="No semester found"
+                      searchValue={semesterSearch}
+                      onSearchValueChange={setSemesterSearch}
+                    />
+                    <SearchableSelect
                       value={editingRegistrationBatchId}
-                      onChange={(event) => setEditingRegistrationBatchId(event.target.value)}
-                      className="rounded-lg border border-border bg-background px-2 py-1"
-                    >
-                      <option value="">Select batch</option>
-                      {batches.map((batchItem) => (
-                        <option key={batchItem.id} value={batchItem.id}>
-                          {batchItem.name}
-                        </option>
-                      ))}
-                    </select>
-                    <select
+                      onChange={setEditingRegistrationBatchId}
+                      options={batches.map((batchItem) => ({ value: batchItem.id, label: batchItem.name }))}
+                      placeholder="Select batch"
+                      searchPlaceholder="Search batch..."
+                      emptyText="No batch found"
+                      searchValue={batchSearch}
+                      onSearchValueChange={setBatchSearch}
+                    />
+                    <SearchableSelect
                       value={editingRegistrationSectionId}
-                      onChange={(event) => setEditingRegistrationSectionId(event.target.value)}
-                      className="rounded-lg border border-border bg-background px-2 py-1"
-                    >
-                      <option value="">Select section</option>
-                      {filteredSectionsForEditingRegistration.map((sectionItem) => (
-                        <option key={sectionItem.id} value={sectionItem.id}>
-                          {sectionItem.name}
-                        </option>
-                      ))}
-                    </select>
-                    <select
+                      onChange={setEditingRegistrationSectionId}
+                      options={filteredSectionsForEditingRegistration.map((sectionItem) => ({ value: sectionItem.id, label: sectionItem.name }))}
+                      placeholder="Select section"
+                      searchPlaceholder="Search section..."
+                      emptyText="No section found"
+                      searchValue={sectionSearch}
+                      onSearchValueChange={setSectionSearch}
+                    />
+                    <SearchableSelect
                       value={editingRegistrationCourseId}
-                      onChange={(event) => setEditingRegistrationCourseId(event.target.value)}
-                      className="rounded-lg border border-border bg-background px-2 py-1"
-                    >
-                      <option value="">Select course</option>
-                      {courses.map((courseItem) => (
-                        <option key={courseItem.id} value={courseItem.id}>
-                          {courseItem.courseCode} - {courseItem.courseTitle}
-                        </option>
-                      ))}
-                    </select>
-                    <select
+                      onChange={setEditingRegistrationCourseId}
+                      options={courses.map((courseItem) => ({ value: courseItem.id, label: `${courseItem.courseCode} - ${courseItem.courseTitle}` }))}
+                      placeholder="Select course"
+                      searchPlaceholder="Search course..."
+                      emptyText="No course found"
+                      searchValue={courseSearch}
+                      onSearchValueChange={setCourseSearch}
+                    />
+                    <SearchableSelect
                       value={editingRegistrationStudentProfileId}
-                      onChange={(event) =>
-                        setEditingRegistrationStudentProfileId(event.target.value)
-                      }
-                      className="rounded-lg border border-border bg-background px-2 py-1"
-                    >
-                      <option value="">Select student</option>
-                      {students.map((studentItem) => (
-                        <option key={studentItem.id} value={studentItem.id}>
-                          {studentItem.user.name} ({studentItem.studentsId})
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setEditingRegistrationStudentProfileId}
+                      options={students.map((studentItem) => ({ value: studentItem.id, label: `${studentItem.user.name} (${studentItem.studentsId})` }))}
+                      placeholder="Select student"
+                      searchPlaceholder="Search student..."
+                      emptyText="No student found"
+                      searchValue={studentSearch}
+                      onSearchValueChange={setStudentSearch}
+                    />
                   </div>
 
                   <div className="flex gap-2">

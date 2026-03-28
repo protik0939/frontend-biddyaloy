@@ -132,8 +132,9 @@ export async function createInstitutionSubAdminAccount(payload: CreateInstitutio
   return parseResponse<InstitutionSubAdminAccount>(response);
 }
 
-export async function listInstitutionFaculties() {
-  const response = await fetch(getApiPath("/institution-admin/faculties"), {
+export async function listInstitutionFaculties(search?: string) {
+  const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+  const response = await fetch(getApiPath(`/institution-admin/faculties${query}`), {
     method: "GET",
     credentials: "include",
     cache: "no-store",

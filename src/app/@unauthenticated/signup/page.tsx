@@ -28,6 +28,19 @@ function getSingleQueryParam(value: string | string[] | undefined): string | und
 
 export default async function page({ searchParams }: SignUpPageProps) {
     const cookieStore = await cookies();
+    const hasPendingVerification = cookieStore.get("pending_verification")?.value === "1";
+    const pendingEmail = cookieStore.get("pending_verification_email")?.value;
+
+    if (hasPendingVerification) {
+        const params = new URLSearchParams();
+        if (pendingEmail) {
+            params.set("email", pendingEmail);
+        }
+
+        const queryString = params.toString();
+        redirect(queryString ? `/verify-account?${queryString}` : "/verify-account");
+    }
+
     const currentRole = (cookieStore.get("user_role")?.value ?? "").toUpperCase();
 
     if (currentRole && currentRole !== "UNAUTHENTICATED") {

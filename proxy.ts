@@ -8,7 +8,14 @@ type UserRole =
   | "TEACHER"
   | "STUDENT";
 
-const PUBLIC_ROUTES = new Set(["/", "/login", "/signup", "/teacher-apply", "/student-apply"]);
+const PUBLIC_ROUTES = new Set([
+  "/",
+  "/login",
+  "/signup",
+  "/teacher-apply",
+  "/student-apply",
+  "/verify-account",
+]);
 
 const PRIVATE_ROUTE_PREFIXES = [
   "/admins",
@@ -90,6 +97,17 @@ export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const hasToken = hasSessionToken(request);
   const userRole = normalizeRole(request.cookies.get("user_role")?.value);
+  const hasPendingVerification = request.cookies.get("pending_verification")?.value === "1";
+  const pendingEmail = request.cookies.get("pending_verification_email")?.value;
+
+  if (hasPendingVerification && pathname !== "/verify-account") {
+    const verifyUrl = new URL("/verify-account", request.url);
+    if (pendingEmail) {
+      verifyUrl.searchParams.set("email", pendingEmail);
+    }
+
+    return NextResponse.redirect(verifyUrl);
+  }
 
   if ((pathname === "/login" || pathname === "/signup") && hasToken) {
     return redirectTo(request, "/");

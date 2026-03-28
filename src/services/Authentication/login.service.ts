@@ -13,8 +13,17 @@ export type AuthApiResponse = {
 	jwt?: string;
 	refreshToken?: string;
 	role?: string;
+	accountStatus?: string;
+	verificationRequired?: boolean;
+	verification?: {
+		otpExpiresAt?: string;
+		resendAvailableAt?: string;
+		otpValiditySeconds?: number;
+		resendCooldownSeconds?: number;
+	};
 	user?: {
 		role?: string;
+		accountStatus?: string;
 	};
 	data?: {
 		token?: string;
@@ -22,8 +31,17 @@ export type AuthApiResponse = {
 		jwt?: string;
 		refreshToken?: string;
 		role?: string;
+		accountStatus?: string;
+		verificationRequired?: boolean;
+		verification?: {
+			otpExpiresAt?: string;
+			resendAvailableAt?: string;
+			otpValiditySeconds?: number;
+			resendCooldownSeconds?: number;
+		};
 		user?: {
 			role?: string;
+			accountStatus?: string;
 		};
 	};
 	message?: string | string[];

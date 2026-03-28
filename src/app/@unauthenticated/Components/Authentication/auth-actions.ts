@@ -25,6 +25,9 @@ const AUTH_COOKIE_NAMES = new Set([
   "better-auth.callback-url",
 ]);
 
+const PENDING_VERIFICATION_COOKIE = "pending_verification";
+const PENDING_VERIFICATION_EMAIL_COOKIE = "pending_verification_email";
+
 function getString(formData: FormData, key: string) {
   const raw = formData.get(key);
   return typeof raw === "string" ? raw : "";
@@ -56,6 +59,58 @@ function pickRole(data: AuthApiResponse): string | undefined {
   return normalizeRole(
     data.role ?? data.user?.role ?? data.data?.role ?? data.data?.user?.role,
   );
+}
+
+function pickAccountStatus(data: AuthApiResponse): string | undefined {
+  const candidate =
+    data.user?.accountStatus ??
+    data.data?.user?.accountStatus ??
+    data.accountStatus ??
+    (data.data as { accountStatus?: string } | undefined)?.accountStatus;
+
+  return typeof candidate === "string" ? candidate.toUpperCase() : undefined;
+}
+
+function pickVerificationRequired(data: AuthApiResponse): boolean {
+  const direct = (data as { verificationRequired?: unknown }).verificationRequired;
+  if (typeof direct === "boolean") {
+    return direct;
+  }
+
+  const nested = (data.data as { verificationRequired?: unknown } | undefined)
+    ?.verificationRequired;
+  return typeof nested === "boolean" ? nested : false;
+}
+
+type VerificationMeta = {
+  otpExpiresAt?: string;
+  resendAvailableAt?: string;
+};
+
+function pickVerificationMeta(data: AuthApiResponse): VerificationMeta {
+  const direct = (data as { verification?: VerificationMeta }).verification;
+  if (direct) {
+    return direct;
+  }
+
+  const nested = (data.data as { verification?: VerificationMeta } | undefined)
+    ?.verification;
+  return nested ?? {};
+}
+
+function buildVerifyAccountRedirectUrl(email: string, verificationMeta?: VerificationMeta) {
+  const params = new URLSearchParams();
+  params.set("email", email);
+
+  if (verificationMeta?.otpExpiresAt) {
+    params.set("otpExpiresAt", verificationMeta.otpExpiresAt);
+  }
+
+  if (verificationMeta?.resendAvailableAt) {
+    params.set("resendAvailableAt", verificationMeta.resendAvailableAt);
+  }
+
+  return `/verify-account?${params.toString()}`;
 }
 
 type ParsedCookieOptions = {
@@ -220,10 +275,12 @@ function buildLoginErrorRedirectUrl(
   return `/login?${params.toString()}`;
 }
 
-async function persistSession(data: AuthApiResponse, setCookies: string[]) {
+async function persistSession(data: AuthApiResponse, setCookies: string[], pendingEmail?: string) {
   const cookieStore = await cookies();
   const token = pickToken(data);
   const role = pickRole(data);
+  const accountStatus = pickAccountStatus(data);
+  const verificationRequired = pickVerificationRequired(data) || accountStatus === "PENDING";
 
   for (const rawCookie of setCookies) {
     applySetCookieString(cookieStore, rawCookie);
@@ -239,7 +296,7 @@ async function persistSession(data: AuthApiResponse, setCookies: string[]) {
     });
   }
 
-  if (role) {
+  if (role && !verificationRequired) {
     cookieStore.set("user_role", role, {
       httpOnly: false,
       sameSite: "lax",
@@ -247,6 +304,37 @@ async function persistSession(data: AuthApiResponse, setCookies: string[]) {
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
     });
+  } else {
+    cookieStore.set("user_role", "UNAUTHENTICATED", {
+      httpOnly: false,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    });
+  }
+
+  if (verificationRequired) {
+    cookieStore.set(PENDING_VERIFICATION_COOKIE, "1", {
+      httpOnly: false,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24,
+    });
+
+    if (pendingEmail) {
+      cookieStore.set(PENDING_VERIFICATION_EMAIL_COOKIE, pendingEmail, {
+        httpOnly: false,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 60 * 60 * 24,
+      });
+    }
+  } else {
+    cookieStore.delete(PENDING_VERIFICATION_COOKIE);
+    cookieStore.delete(PENDING_VERIFICATION_EMAIL_COOKIE);
   }
 }
 
@@ -272,7 +360,13 @@ export async function loginAction(formData: FormData) {
     redirect(buildLoginErrorRedirectUrl(result.message, { email }, result.fieldErrors));
   }
 
-  await persistSession(result.body, result.setCookies);
+  await persistSession(result.body, result.setCookies, email);
+
+  const verificationRequired = pickVerificationRequired(result.body) || pickAccountStatus(result.body) === "PENDING";
+  if (verificationRequired) {
+    redirect(buildVerifyAccountRedirectUrl(email, pickVerificationMeta(result.body)));
+  }
+
   redirect("/?toast=Login%20successful&toastType=success");
 }
 
@@ -340,7 +434,13 @@ export async function signupAction(formData: FormData) {
     );
   }
 
-  await persistSession(result.body, result.setCookies);
+  await persistSession(result.body, result.setCookies, email);
+
+  const verificationRequired = pickVerificationRequired(result.body) || pickAccountStatus(result.body) === "PENDING";
+  if (verificationRequired) {
+    redirect(buildVerifyAccountRedirectUrl(email, pickVerificationMeta(result.body)));
+  }
+
   redirect("/?toast=Signup%20successful&toastType=success");
 }
 
@@ -368,6 +468,8 @@ async function clearAuthCookies() {
 
   cookieStore.delete("auth_token");
   cookieStore.delete("user_role");
+  cookieStore.delete(PENDING_VERIFICATION_COOKIE);
+  cookieStore.delete(PENDING_VERIFICATION_EMAIL_COOKIE);
 }
 
 async function tryBackendSignOut() {

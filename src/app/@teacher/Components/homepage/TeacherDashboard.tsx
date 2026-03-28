@@ -7,8 +7,8 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import LogoutButton from "@/Components/LogoutButton";
+import SidebarProfileCard from "@/Components/SidebarProfileCard";
 import ThemeToggle from "@/Components/ThemeToggle";
-import UserIdentityBadge from "@/Components/UserIdentityBadge";
 import {
   type TeacherPortalProfileResponse,
   TeacherPortalService,
@@ -18,6 +18,8 @@ import TeacherApplicationGate from "./TeacherApplicationGate";
 import TeacherSectionContent from "../sections/TeacherSectionContent";
 import { teacherSidebarItems, type TeacherSection } from "../sections/teacherSections";
 
+let teacherProfileCache: TeacherPortalProfileResponse | null = null;
+
 interface TeacherDashboardProps {
   section: TeacherSection;
 }
@@ -26,12 +28,13 @@ export default function TeacherDashboard({ section }: Readonly<TeacherDashboardP
   const pathname = usePathname();
   const [showSidebar, setShowSidebar] = useState(true);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [loadingProfile, setLoadingProfile] = useState(!teacherProfileCache);
   const [showFullscreenLoader, setShowFullscreenLoader] = useState(false);
-  const [profileState, setProfileState] = useState<TeacherPortalProfileResponse | null>(null);
+  const [profileState, setProfileState] = useState<TeacherPortalProfileResponse | null>(teacherProfileCache);
 
   const reloadProfile = async () => {
     const data = await TeacherPortalService.getProfileOverview();
+    teacherProfileCache = data;
     setProfileState(data);
   };
 
@@ -40,23 +43,27 @@ export default function TeacherDashboard({ section }: Readonly<TeacherDashboardP
     let shouldShowFullscreenLoader = false;
 
     const load = async () => {
-      if (typeof window !== "undefined") {
-        const loaderSeen = window.sessionStorage.getItem("teacher:fullscreen-loader-seen");
+      if (!teacherProfileCache && globalThis.window !== undefined) {
+        const loaderSeen = globalThis.sessionStorage.getItem("teacher:fullscreen-loader-seen");
         shouldShowFullscreenLoader = loaderSeen !== "1";
       }
 
-      if (!cancelled) {
+      if (!cancelled && !teacherProfileCache) {
         setShowFullscreenLoader(shouldShowFullscreenLoader);
       }
 
-      setLoadingProfile(true);
+      if (!teacherProfileCache) {
+        setLoadingProfile(true);
+      }
+
       try {
         const data = await TeacherPortalService.getProfileOverview();
         if (!cancelled) {
+          teacherProfileCache = data;
           setProfileState(data);
 
-          if (shouldShowFullscreenLoader && typeof window !== "undefined") {
-            window.sessionStorage.setItem("teacher:fullscreen-loader-seen", "1");
+          if (shouldShowFullscreenLoader && globalThis.window !== undefined) {
+            globalThis.sessionStorage.setItem("teacher:fullscreen-loader-seen", "1");
           }
         }
       } catch (error) {
@@ -169,13 +176,6 @@ export default function TeacherDashboard({ section }: Readonly<TeacherDashboardP
               <p className="text-sm text-muted-foreground">Apply to an institution to start teaching workflows.</p>
             </div>
             <div className="flex gap-2">
-              <UserIdentityBadge
-                userName={profileState?.user.name}
-                userEmail={profileState?.user.email}
-                userImage={profileState?.user.image}
-                institutionName={null}
-                compact
-              />
               <ThemeToggle />
               <LogoutButton />
             </div>
@@ -210,7 +210,7 @@ export default function TeacherDashboard({ section }: Readonly<TeacherDashboardP
 
       <div className="relative mx-auto flex w-full gap-4 px-4 py-6 sm:px-6 sm:py-8 lg:h-full lg:px-8">
         <aside
-          className={`fixed left-4 top-6 z-40 h-[calc(100vh-3rem)] overflow-y-auto rounded-3xl border border-border/70 bg-card/95 p-3 shadow-lg backdrop-blur-md transition-all duration-300 lg:left-8 lg:top-8 lg:h-[calc(100vh-4rem)] ${showMobileSidebar ? "translate-x-0 opacity-100" : "-translate-x-[115%] opacity-0"} lg:translate-x-0 lg:opacity-100 ${showSidebar ? "w-64" : "w-16.5"}`}
+          className={`fixed left-4 top-6 z-40 flex h-[calc(100vh-3rem)] flex-col overflow-y-auto rounded-3xl border border-border/70 bg-card/95 p-3 shadow-lg backdrop-blur-md transition-all duration-300 lg:left-8 lg:top-8 lg:h-[calc(100vh-4rem)] ${showMobileSidebar ? "translate-x-0 opacity-100" : "-translate-x-[115%] opacity-0"} lg:translate-x-0 lg:opacity-100 ${showSidebar ? "w-64" : "w-16.5"}`}
         >
           <div className={`mb-3 flex items-center ${showSidebar ? "justify-between" : "justify-center"}`}>
             <div
@@ -236,7 +236,7 @@ export default function TeacherDashboard({ section }: Readonly<TeacherDashboardP
             </button>
           </div>
 
-          <nav className="space-y-1.5">
+          <nav className="flex-1 space-y-1.5">
             {teacherSidebarItems.map((item) => {
               const isActive = pathname === item.href;
               return (
@@ -256,6 +256,14 @@ export default function TeacherDashboard({ section }: Readonly<TeacherDashboardP
               );
             })}
           </nav>
+
+          <SidebarProfileCard
+            userName={profileState?.user?.name}
+            userImage={profileState?.user?.image}
+            institutionShortName={profileState?.profile?.institution?.shortName}
+            institutionLogo={profileState?.profile?.institution?.institutionLogo}
+            expanded={showSidebar}
+          />
         </aside>
 
         <div
@@ -280,15 +288,6 @@ export default function TeacherDashboard({ section }: Readonly<TeacherDashboardP
               </p>
             </div>
             <div className="flex flex-row justify-center gap-3">
-              <UserIdentityBadge
-                userName={profileState?.user.name}
-                userEmail={profileState?.user.email}
-                userImage={profileState?.user.image}
-                institutionName={profileState?.profile?.institution.name}
-                institutionShortName={profileState?.profile?.institution.shortName}
-                institutionLogo={profileState?.profile?.institution.institutionLogo}
-                compact
-              />
               <ThemeToggle />
               <LogoutButton />
             </div>

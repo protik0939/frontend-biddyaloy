@@ -42,7 +42,7 @@ export default function SignUp({ errorMessage, fieldErrors, fieldValues }: Reado
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.15),transparent_48%),radial-gradient(circle_at_bottom,rgba(31,111,139,0.2),transparent_50%)]">
       <div className="mx-auto flex min-h-screen max-w-6xl items-center justify-center px-6 py-12">
-        <div className="grid w-full gap-10 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="grid w-full gap-10  pt-10 lg:grid-cols-[0.95fr_1.05fr]">
           <section className="relative order-2 lg:order-1">
             <div className="absolute -top-6 left-6 h-24 w-24 rounded-full bg-accent/30 blur-3xl" />
             <div className="absolute -bottom-10 right-10 h-28 w-28 rounded-full bg-primary/30 blur-3xl" />

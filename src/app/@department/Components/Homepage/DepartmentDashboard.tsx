@@ -14,8 +14,8 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import LogoutButton from "@/Components/LogoutButton";
+import SidebarProfileCard from "@/Components/SidebarProfileCard";
 import ThemeToggle from "@/Components/ThemeToggle";
-import UserIdentityBadge from "@/Components/UserIdentityBadge";
 import DepartmentSectionContent from "@/app/@department/Components/Sections/DepartmentSectionContent";
 import {
   DepartmentManagementService,
@@ -127,7 +127,7 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
 
       <div className="relative mx-auto flex w-full gap-4 px-4 py-6 sm:px-6 sm:py-8 lg:h-full lg:px-8">
         <aside
-          className={`fixed left-4 top-6 z-40 h-[calc(100vh-3rem)] overflow-y-auto rounded-3xl border border-border/70 bg-card/95 p-3 shadow-lg backdrop-blur-md transition-all duration-300 lg:left-8 lg:top-8 lg:h-[calc(100vh-4rem)] ${showMobileSidebar ? "translate-x-0 opacity-100" : "-translate-x-[115%] opacity-0"} lg:translate-x-0 lg:opacity-100 ${showSidebar ? "w-64" : "w-16.5"}`}
+          className={`fixed left-4 top-6 z-40 flex h-[calc(100vh-3rem)] flex-col overflow-y-auto rounded-3xl border border-border/70 bg-card/95 p-3 shadow-lg backdrop-blur-md transition-all duration-300 lg:left-8 lg:top-8 lg:h-[calc(100vh-4rem)] ${showMobileSidebar ? "translate-x-0 opacity-100" : "-translate-x-[115%] opacity-0"} lg:translate-x-0 lg:opacity-100 ${showSidebar ? "w-64" : "w-16.5"}`}
         >
           <div className={`mb-3 flex items-center ${showSidebar ? "justify-between" : "justify-center"}`}>
             <div
@@ -153,7 +153,7 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
             </button>
           </div>
 
-          <nav className="space-y-1.5">
+          <nav className="flex-1 space-y-1.5">
             {sidebarItems.map((item) => {
               const isActive = pathname === item.href;
               return (
@@ -173,6 +173,14 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
               );
             })}
           </nav>
+
+          <SidebarProfileCard
+            userName={summary?.user?.name}
+            userImage={summary?.user?.image}
+            institutionShortName={summary?.institution?.shortName}
+            institutionLogo={summary?.institution?.institutionLogo}
+            expanded={showSidebar}
+          />
         </aside>
 
         <div
@@ -201,15 +209,6 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
               </p>
             </div>
             <div className="flex flex-row justify-center gap-3">
-              <UserIdentityBadge
-                userName={summary?.user?.name}
-                userEmail={summary?.user?.email}
-                userImage={summary?.user?.image}
-                institutionName={summary?.institution?.name}
-                institutionShortName={summary?.institution?.shortName}
-                institutionLogo={summary?.institution?.institutionLogo}
-                compact
-              />
               <ThemeToggle />
               <LogoutButton />
             </div>

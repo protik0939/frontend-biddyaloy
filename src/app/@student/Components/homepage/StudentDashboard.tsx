@@ -1,14 +1,14 @@
 "use client";
 
-import { Bell, BookOpen, GraduationCap, Menu, Receipt, X } from "lucide-react";
+import { Bell, BookOpen, GraduationCap, Loader2, Menu, Receipt, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import LogoutButton from "@/Components/LogoutButton";
+import SidebarProfileCard from "@/Components/SidebarProfileCard";
 import ThemeToggle from "@/Components/ThemeToggle";
-import UserIdentityBadge from "@/Components/UserIdentityBadge";
 import {
   type StudentPortalProfileResponse,
   StudentPortalService,
@@ -17,6 +17,8 @@ import {
 import StudentSectionContent from "../sections/StudentSectionContent";
 import StudentApplicationGate from "./StudentApplicationGate";
 import { studentSidebarItems, type StudentSection } from "../sections/studentSections";
+
+let studentProfileCache: StudentPortalProfileResponse | null = null;
 
 const updateNotes = [
   "Track all assignments, tasks, and quizzes from a single timeline.",
@@ -33,11 +35,12 @@ export default function StudentDashboard({ section }: Readonly<StudentDashboardP
   const isOverview = section === "overview";
   const [showSidebar, setShowSidebar] = useState(true);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
-  const [loadingProfile, setLoadingProfile] = useState(true);
-  const [profileState, setProfileState] = useState<StudentPortalProfileResponse | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(!studentProfileCache);
+  const [profileState, setProfileState] = useState<StudentPortalProfileResponse | null>(studentProfileCache);
 
   const reloadProfile = async () => {
     const data = await StudentPortalService.getProfileOverview();
+    studentProfileCache = data;
     setProfileState(data);
   };
 
@@ -45,10 +48,14 @@ export default function StudentDashboard({ section }: Readonly<StudentDashboardP
     let cancelled = false;
 
     const load = async () => {
-      setLoadingProfile(true);
+      if (!studentProfileCache) {
+        setLoadingProfile(true);
+      }
+
       try {
         const data = await StudentPortalService.getProfileOverview();
         if (!cancelled) {
+          studentProfileCache = data;
           setProfileState(data);
         }
       } catch (error) {
@@ -84,18 +91,28 @@ export default function StudentDashboard({ section }: Readonly<StudentDashboardP
 
   if (loadingProfile) {
     return (
-      <section className="relative min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8">
+      <section className="relative flex min-h-screen items-center justify-center bg-background px-4 py-8 sm:px-6 lg:px-8">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -left-24 top-10 h-64 w-64 rounded-full bg-primary/20 blur-3xl" />
           <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-accent/25 blur-3xl" />
         </div>
 
-        <div className="relative mx-auto max-w-7xl">
-          <div className="inline-flex items-center gap-2 rounded-xl border border-border/70 bg-card/90 px-4 py-2 text-sm text-muted-foreground shadow-sm">
-            <Bell className="h-4 w-4" />
-            Loading student workspace...
+        <article className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-border/70 bg-card/90 p-0 shadow-sm">
+          <div className="h-1.5 w-full animate-pulse bg-linear-to-r from-primary/20 via-primary/80 to-primary/20" />
+          <div className="p-6 sm:p-7">
+            <div className="flex items-center gap-4">
+              <div className="relative inline-flex h-12 w-12 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="absolute inline-flex h-12 w-12 animate-ping rounded-full border border-primary/20" />
+              </div>
+
+              <div>
+                <p className="text-base font-semibold tracking-tight">Loading, Please Wait!</p>
+                <p className="mt-1 text-sm text-muted-foreground">Preparing your student workspace...</p>
+              </div>
+            </div>
           </div>
-        </div>
+        </article>
       </section>
     );
   }
@@ -120,13 +137,6 @@ export default function StudentDashboard({ section }: Readonly<StudentDashboardP
               <p className="text-sm text-muted-foreground">Complete your profile and apply to an institution to start student workflows.</p>
             </div>
             <div className="flex gap-2">
-              <UserIdentityBadge
-                userName={profileState.user.name}
-                userEmail={profileState.user.email}
-                userImage={profileState?.user.image}
-                institutionName={null}
-                compact
-              />
               <ThemeToggle />
               <LogoutButton />
             </div>
@@ -161,7 +171,7 @@ export default function StudentDashboard({ section }: Readonly<StudentDashboardP
 
       <div className="relative mx-auto flex w-full gap-4 px-4 py-6 sm:px-6 sm:py-8 lg:h-full lg:px-8">
         <aside
-          className={`fixed left-4 top-6 z-40 h-[calc(100vh-3rem)] overflow-y-auto rounded-3xl border border-border/70 bg-card/95 p-3 shadow-lg backdrop-blur-md transition-all duration-300 lg:left-8 lg:top-8 lg:h-[calc(100vh-4rem)] ${showMobileSidebar ? "translate-x-0 opacity-100" : "-translate-x-[115%] opacity-0"} lg:translate-x-0 lg:opacity-100 ${showSidebar ? "w-64" : "w-16.5"}`}
+          className={`fixed left-4 top-6 z-40 flex h-[calc(100vh-3rem)] flex-col overflow-y-auto rounded-3xl border border-border/70 bg-card/95 p-3 shadow-lg backdrop-blur-md transition-all duration-300 lg:left-8 lg:top-8 lg:h-[calc(100vh-4rem)] ${showMobileSidebar ? "translate-x-0 opacity-100" : "-translate-x-[115%] opacity-0"} lg:translate-x-0 lg:opacity-100 ${showSidebar ? "w-64" : "w-16.5"}`}
         >
           <div className={`mb-3 flex items-center ${showSidebar ? "justify-between" : "justify-center"}`}>
             <div
@@ -187,7 +197,7 @@ export default function StudentDashboard({ section }: Readonly<StudentDashboardP
             </button>
           </div>
 
-          <nav className="space-y-1.5">
+          <nav className="flex-1 space-y-1.5">
             {studentSidebarItems.map((item) => {
               const isActive = pathname === item.href;
               return (
@@ -207,6 +217,14 @@ export default function StudentDashboard({ section }: Readonly<StudentDashboardP
               );
             })}
           </nav>
+
+          <SidebarProfileCard
+            userName={profileState?.user?.name}
+            userImage={profileState?.user?.image}
+            institutionShortName={profileState?.profile?.institution?.shortName}
+            institutionLogo={profileState?.profile?.institution?.institutionLogo}
+            expanded={showSidebar}
+          />
         </aside>
 
         <div
@@ -231,15 +249,6 @@ export default function StudentDashboard({ section }: Readonly<StudentDashboardP
               </p>
             </div>
             <div className="flex flex-row justify-center gap-3">
-              <UserIdentityBadge
-                userName={profileState.user.name}
-                userEmail={profileState.user.email}
-                userImage={profileState?.user.image}
-                institutionName={profileState.profile?.institution?.name}
-                institutionShortName={profileState.profile?.institution?.shortName}
-                institutionLogo={profileState.profile?.institution?.institutionLogo}
-                compact
-              />
               <ThemeToggle />
               <LogoutButton />
             </div>

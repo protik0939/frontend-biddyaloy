@@ -23,7 +23,7 @@ export default function Login({ errorMessage, fieldErrors, fieldValues }: Readon
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.18),transparent_48%),radial-gradient(circle_at_bottom,rgba(31,111,139,0.2),transparent_50%)]">
       <div className="mx-auto flex min-h-screen max-w-6xl items-center justify-center px-6 py-12">
         <div className="grid w-full gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-          <section className="flex flex-col justify-center">
+          <section className="flex flex-col justify-center pt-10">
             <div className="mb-6 inline-flex w-fit items-center gap-2 rounded-full border border-border/70 bg-card/70 px-4 py-2 text-xs uppercase tracking-[0.3em] text-muted-foreground">
               Biddyaloy Portal
             </div>

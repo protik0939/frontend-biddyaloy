@@ -39,7 +39,7 @@ import type {
 } from "@/services/Admin/adminManagement.service";
 import type { InstitutionApplication, InstitutionType } from "@/services/Admin/institutionApplication.service";
 import PostingManagementPanel from "@/Components/PostingManagement/PostingManagementPanel";
-import UserIdentityBadge from "@/Components/UserIdentityBadge";
+import SidebarProfileCard from "@/Components/SidebarProfileCard";
 import SubAdminAccountForm from "./SubAdminAccountForm";
 import type { AdminDashboardSection } from "./types";
 import { formatDateDDMMYYYY, formatInstitutionType } from "./utils";
@@ -441,7 +441,7 @@ export default function AdminDashboard({
 
       <div className="relative flex">
         <aside
-          className={`absolute left-0 top-0 z-30 h-auto border-r border-border/70 bg-card/95 p-3 shadow-md transition-all duration-300 md:static md:translate-x-0 ${showMobileSidebar ? "translate-x-0" : "-translate-x-full"} ${showSidebar ? "w-64" : "w-16"}`}
+          className={`absolute left-0 top-0 z-30 flex h-auto flex-col border-r border-border/70 bg-card/95 p-3 shadow-md transition-all duration-300 md:static md:translate-x-0 ${showMobileSidebar ? "translate-x-0" : "-translate-x-full"} ${showSidebar ? "w-64" : "w-16"}`}
         >
           <div className={`mb-3 flex items-center ${showSidebar ? "justify-between" : "justify-center"}`}>
             <span
@@ -469,7 +469,7 @@ export default function AdminDashboard({
             </div>
           </div>
 
-          <nav className="space-y-1.5">
+          <nav className="flex-1 space-y-1.5">
             {dashboardMenuItems.map((item) => {
               const isActive = activeSection === item.key;
               return (
@@ -492,6 +492,14 @@ export default function AdminDashboard({
               );
             })}
           </nav>
+
+          <SidebarProfileCard
+            userName={dashboardSummary?.user?.name}
+            userImage={dashboardSummary?.user?.image}
+            institutionShortName={dashboardSummary?.institution?.shortName}
+            institutionLogo={dashboardSummary?.institution?.institutionLogo ?? latest.institutionLogo}
+            expanded={showSidebar}
+          />
         </aside>
 
         <div className="min-w-0 flex-1 p-4 sm:p-5">
@@ -509,15 +517,6 @@ export default function AdminDashboard({
             </div>
 
             <div className="flex items-center gap-2">
-              <UserIdentityBadge
-                userName={dashboardSummary?.user?.name}
-                userEmail={dashboardSummary?.user?.email}
-                userImage={dashboardSummary?.user?.image}
-                institutionName={dashboardSummary?.institution?.name ?? latest.institutionName}
-                institutionShortName={dashboardSummary?.institution?.shortName}
-                institutionLogo={dashboardSummary?.institution?.institutionLogo ?? latest.institutionLogo}
-                compact
-              />
               <div className="rounded-lg border border-border/70 bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground">
                 {formatInstitutionType(
                   (dashboardSummary?.institution?.type as InstitutionType | undefined) ??

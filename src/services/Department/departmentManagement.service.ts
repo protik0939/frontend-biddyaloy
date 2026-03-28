@@ -27,6 +27,8 @@ export interface DepartmentProfile {
   } | null;
 }
 
+import { toSameOriginUrl } from "@/lib/same-origin";
+
 export interface DepartmentDashboardSummary {
   user: {
     id: string;
@@ -350,12 +352,11 @@ type ApiError = {
 };
 
 function getApiBase() {
-  const base = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
-  return base.endsWith("/") ? base.slice(0, -1) : base;
+  return "";
 }
 
 function getApiPath(path: string) {
-  return `${getApiBase()}${path}`;
+  return toSameOriginUrl(`${getApiBase()}${path}`);
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {

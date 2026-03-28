@@ -1,3 +1,5 @@
+import { toSameOriginUrl } from "@/lib/same-origin";
+
 import type { AuthApiResponse, AuthApiResult, AuthFieldErrors } from "./login.service";
 
 type SignUpPayload = {
@@ -60,10 +62,6 @@ function getValidationMessage(raw: unknown): string | undefined {
 		);
 	}
 	return undefined;
-}
-
-function getBackendBaseUrl() {
-	return process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_BACKEND_URL;
 }
 
 function extractSetCookies(response: Response): string[] {
@@ -187,17 +185,10 @@ function collectFieldErrors(raw: unknown): AuthFieldErrors {
 }
 
 export async function signupService(payload: SignUpPayload): Promise<AuthApiResult> {
-	const apiBase = getBackendBaseUrl();
-	if (!apiBase) {
-		return { ok: false, message: "Backend URL is not configured" };
-	}
-
-	const normalizedBase = apiBase.endsWith("/") ? apiBase.slice(0, -1) : apiBase;
-
 	const endpoints = [
-		`${normalizedBase}/api/v1/auth/register`,
-		`${normalizedBase}/api/auth/register`,
-		`${normalizedBase}/auth/register`,
+		toSameOriginUrl("/api/v1/auth/register"),
+		toSameOriginUrl("/api/auth/register"),
+		toSameOriginUrl("/auth/register"),
 	];
 
 	let lastError = "Authentication failed";

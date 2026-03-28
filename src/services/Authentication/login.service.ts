@@ -1,3 +1,5 @@
+import { toSameOriginUrl } from "@/lib/same-origin";
+
 type LoginPayload = {
 	email: string;
 	password: string;
@@ -140,10 +142,6 @@ function collectFieldErrors(raw: unknown): AuthFieldErrors {
 	return fieldErrors;
 }
 
-function getBackendBaseUrl() {
-	return process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_BACKEND_URL;
-}
-
 function extractSetCookies(response: Response): string[] {
 	const headersWithSetCookie = response.headers as Headers & {
 		getSetCookie?: () => string[];
@@ -169,16 +167,10 @@ export async function loginService(payload: LoginPayload): Promise<AuthApiResult
 		};
 	}
 
-	const apiBase = getBackendBaseUrl();
-	if (!apiBase) {
-		return { ok: false, message: "Backend URL is not configured" };
-	}
-
-	const normalizedBase = apiBase.endsWith("/") ? apiBase.slice(0, -1) : apiBase;
 	const endpoints = [
-		`${normalizedBase}/api/v1/auth/login`,
-		`${normalizedBase}/api/auth/login`,
-		`${normalizedBase}/auth/login`,
+		toSameOriginUrl("/api/v1/auth/login"),
+		toSameOriginUrl("/api/auth/login"),
+		toSameOriginUrl("/auth/login"),
 	];
 
 	let lastError = "Authentication failed";

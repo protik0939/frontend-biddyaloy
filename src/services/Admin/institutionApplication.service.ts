@@ -1,3 +1,5 @@
+import { toSameOriginUrl } from "@/lib/same-origin";
+
 export type InstitutionType =
   | "SCHOOL"
   | "COLLEGE"
@@ -90,12 +92,11 @@ type ApiError = {
 };
 
 function getApiBase() {
-  const base = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
-  return base.endsWith("/") ? base.slice(0, -1) : base;
+  return "";
 }
 
 function getApiPath(path: string) {
-  return `${getApiBase()}/api/v1${path}`;
+  return toSameOriginUrl(`${getApiBase()}/api/v1${path}`);
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {

@@ -345,7 +345,7 @@ export async function signupAction(formData: FormData) {
 }
 
 function getBackendBaseUrl() {
-  return process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_BACKEND_URL;
+  return process.env.BACKEND_PUBLIC_URL;
 }
 
 function shouldDeleteAuthCookie(name: string) {
@@ -385,6 +385,7 @@ async function tryBackendSignOut() {
     await fetch(endpoint, {
       method: "POST",
       headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+      credentials: "include",
       cache: "no-store",
     });
   } catch {

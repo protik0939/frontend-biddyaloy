@@ -410,7 +410,7 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
 
   const canInitiatePayment =
     Boolean(selectedFeeItem) &&
-    selectedFeeItem.dueAmount > 0 &&
+    (selectedFeeItem?.dueAmount ?? 0) > 0 &&
     (feePaymentMode === "FULL" || Number(monthsCount) > 0);
 
   const handleInitiateFeePayment = async () => {

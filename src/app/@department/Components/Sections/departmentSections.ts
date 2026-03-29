@@ -4,6 +4,7 @@ import {
   Home,
   Layers,
   Megaphone,
+  Receipt,
   ScrollText,
   Settings,
   SquareStack,
@@ -24,6 +25,7 @@ export type DepartmentSection =
   | "teacherApplications"
   | "studentApplications"
   | "students"
+  | "fees"
   | "posts";
 
 export interface DepartmentSidebarItem {
@@ -90,5 +92,6 @@ export const getDepartmentSidebarItems = (isUniversity: boolean): DepartmentSide
   },
   { label: "Teachers", href: "/teachers", section: "teachers", Icon: GraduationCap },
   { label: "Students", href: "/students", section: "students", Icon: Users },
+  { label: "Fees", href: "/fees", section: "fees", Icon: Receipt },
   { label: "Posts", href: "/posts", section: "posts", Icon: Megaphone },
 ];

@@ -15,6 +15,49 @@ type ApiError = {
   errors?: unknown;
 };
 
+export type ApiFieldError = {
+  path: string;
+  message: string;
+};
+
+export class ApiRequestError extends Error {
+  statusCode: number;
+  fieldErrors: ApiFieldError[];
+
+  constructor(message: string, statusCode: number, fieldErrors: ApiFieldError[] = []) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.statusCode = statusCode;
+    this.fieldErrors = fieldErrors;
+  }
+}
+
+const normalizeApiFieldErrors = (errors: unknown): ApiFieldError[] => {
+  if (!Array.isArray(errors)) {
+    return [];
+  }
+
+  return errors
+    .map((item) => {
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      const message = "message" in item && typeof item.message === "string" ? item.message : "";
+      const path = "path" in item && typeof item.path === "string" ? item.path : "";
+
+      if (!message) {
+        return null;
+      }
+
+      return {
+        path,
+        message,
+      };
+    })
+    .filter((item): item is ApiFieldError => Boolean(item));
+};
+
 function getApiBase() {
   return "";
 }
@@ -28,7 +71,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
   if (!response.ok || !("success" in raw) || raw.success !== true) {
     const message = (raw as ApiError)?.message ?? `Request failed with status ${response.status}`;
-    throw new Error(message);
+    throw new ApiRequestError(message, response.status, normalizeApiFieldErrors((raw as ApiError)?.errors));
   }
 
   return raw.data;
@@ -336,9 +379,59 @@ export interface StudentProfileUpdatePayload {
   gender?: string;
 }
 
-export interface StudentFeeStatus {
-  status: string;
-  message: string;
+export interface StudentFeeItem {
+  feeConfigurationId: string;
+  semester: {
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+  };
+  totalFeeAmount: number;
+  monthlyFeeAmount: number;
+  paidAmount: number;
+  dueAmount: number;
+  currency: string;
+}
+
+export interface StudentFeePaymentHistoryItem {
+  id: string;
+  semesterId: string;
+  amount: number;
+  monthsCovered: number;
+  paymentMode: "MONTHLY" | "FULL";
+  currency: string;
+  tranId: string;
+  paidAt: string | null;
+  createdAt: string;
+  gatewayCardType: string | null;
+  gatewayBankTranId: string | null;
+  semester: {
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+  };
+}
+
+export interface StudentFeeOverview {
+  summary: {
+    totalConfiguredAmount: number;
+    totalPaidAmount: number;
+    totalDueAmount: number;
+  };
+  feeItems: StudentFeeItem[];
+  paymentHistory: StudentFeePaymentHistoryItem[];
+}
+
+export interface StudentFeePaymentInitResponse {
+  paymentId: string;
+  tranId: string;
+  paymentUrl: string;
+  amount: number;
+  currency: string;
+  paymentMode: "MONTHLY" | "FULL";
+  monthsCovered: number;
 }
 
 function toQueryString(query: Record<string, string | undefined>) {
@@ -432,7 +525,15 @@ async function deleteSubmission(submissionId: string) {
 }
 
 async function getFeeStatus() {
-  return apiGet<StudentFeeStatus>("/api/v1/student/fees");
+  return apiGet<StudentFeeOverview>("/api/v1/student/fees");
+}
+
+async function initiateFeePayment(payload: {
+  semesterId: string;
+  paymentMode: "MONTHLY" | "FULL";
+  monthsCount?: number;
+}) {
+  return apiPost<StudentFeePaymentInitResponse>("/api/v1/student/fees/initiate", payload);
 }
 
 export const StudentPortalService = {
@@ -452,4 +553,5 @@ export const StudentPortalService = {
   updateSubmission,
   deleteSubmission,
   getFeeStatus,
+  initiateFeePayment,
 };

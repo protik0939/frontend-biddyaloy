@@ -338,6 +338,71 @@ export interface DepartmentStudentAdmissionApplication {
   } | null;
 }
 
+export interface DepartmentFeeConfiguration {
+  id: string;
+  semesterId: string;
+  totalFeeAmount: number;
+  monthlyFeeAmount: number;
+  currency: string;
+  isActive: boolean;
+  semester: {
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+  };
+  totalPaidAmount: number;
+  totalStudentsPaid: number;
+  outstandingAmount: number;
+}
+
+export interface DepartmentStudentPaymentInfo {
+  student: {
+    id: string;
+    studentsId: string;
+    user: {
+      id: string;
+      name: string;
+      email: string;
+      accountStatus: string;
+    };
+  };
+  feeSummaries: Array<{
+    feeConfigurationId: string;
+    semester: {
+      id: string;
+      name: string;
+      startDate: string;
+      endDate: string;
+    };
+    totalFeeAmount: number;
+    monthlyFeeAmount: number;
+    currency: string;
+    paidAmount: number;
+    dueAmount: number;
+  }>;
+  paymentHistory: Array<{
+    id: string;
+    semesterId: string;
+    amount: number;
+    monthsCovered: number;
+    paymentMode: "MONTHLY" | "FULL";
+    status: string;
+    currency: string;
+    tranId: string;
+    paidAt: string | null;
+    createdAt: string;
+    gatewayCardType: string | null;
+    gatewayBankTranId: string | null;
+    semester: {
+      id: string;
+      name: string;
+      startDate: string;
+      endDate: string;
+    };
+  }>;
+}
+
 type ApiSuccess<T> = {
   success: true;
   message?: string;
@@ -349,6 +414,49 @@ type ApiError = {
   message?: string;
   error?: unknown;
   errors?: unknown;
+};
+
+export type ApiFieldError = {
+  path: string;
+  message: string;
+};
+
+export class ApiRequestError extends Error {
+  statusCode: number;
+  fieldErrors: ApiFieldError[];
+
+  constructor(message: string, statusCode: number, fieldErrors: ApiFieldError[] = []) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.statusCode = statusCode;
+    this.fieldErrors = fieldErrors;
+  }
+}
+
+const normalizeApiFieldErrors = (errors: unknown): ApiFieldError[] => {
+  if (!Array.isArray(errors)) {
+    return [];
+  }
+
+  return errors
+    .map((item) => {
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      const message = "message" in item && typeof item.message === "string" ? item.message : "";
+      const path = "path" in item && typeof item.path === "string" ? item.path : "";
+
+      if (!message) {
+        return null;
+      }
+
+      return {
+        path,
+        message,
+      };
+    })
+    .filter((item): item is ApiFieldError => Boolean(item));
 };
 
 function getApiBase() {
@@ -364,7 +472,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
   if (!response.ok || !("success" in raw) || raw.success !== true) {
     const message = (raw as ApiError)?.message ?? `Request failed with status ${response.status}`;
-    throw new Error(message);
+    throw new ApiRequestError(message, response.status, normalizeApiFieldErrors((raw as ApiError)?.errors));
   }
 
   return raw.data;
@@ -673,6 +781,27 @@ export const DepartmentManagementService = {
     return apiPatch<DepartmentStudentAdmissionApplication>(
       `/api/v1/department/student-applications/${applicationId}/review`,
       payload,
+    );
+  },
+
+  listFeeConfigurations(semesterId?: string) {
+    const query = semesterId ? `?semesterId=${encodeURIComponent(semesterId)}` : "";
+    return apiGet<DepartmentFeeConfiguration[]>(`/api/v1/department/fees/configurations${query}`);
+  },
+
+  upsertFeeConfiguration(payload: {
+    semesterId: string;
+    totalFeeAmount: number;
+    monthlyFeeAmount: number;
+    currency?: string;
+  }) {
+    return apiPost<DepartmentFeeConfiguration>("/api/v1/department/fees/configurations", payload);
+  },
+
+  getStudentPaymentInfo(studentsId: string, semesterId?: string) {
+    const query = semesterId ? `?semesterId=${encodeURIComponent(semesterId)}` : "";
+    return apiGet<DepartmentStudentPaymentInfo>(
+      `/api/v1/department/fees/students/${encodeURIComponent(studentsId)}${query}`,
     );
   },
 };

@@ -84,7 +84,7 @@ export default function StudentDashboard({ section }: Readonly<StudentDashboardP
       { label: "Timeline", value: "Live", Icon: Bell },
       { label: "Courses", value: "Registered", Icon: BookOpen },
       { label: "Results", value: "Semester-wise", Icon: GraduationCap },
-      { label: "Fees", value: "Coming Soon", Icon: Receipt },
+      { label: "Fees", value: "SSLCommerz", Icon: Receipt },
     ],
     [],
   );

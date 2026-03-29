@@ -7,8 +7,9 @@ import ImagebbUploader from "@/Components/ui/ImagebbUploader";
 import SearchableSelect from "@/Components/ui/SearchableSelect";
 
 import {
+  ApiRequestError,
   type StudentClassworkType,
-  type StudentFeeStatus,
+  type StudentFeeOverview,
   type StudentPortalProfileResponse,
   type StudentRegisteredCourse,
   type StudentResultResponse,
@@ -23,6 +24,13 @@ import { classworkTypeLabel, type StudentSection } from "./studentSections";
 interface StudentSectionContentProps {
   section: StudentSection;
 }
+
+type StudentFeePaymentFieldErrors = {
+  semesterId?: string;
+  paymentMode?: string;
+  monthsCount?: string;
+  form?: string;
+};
 
 const SUBMISSION_TYPES = new Set<StudentClassworkType>(["TASK", "ASSIGNMENT", "QUIZ"]);
 
@@ -48,6 +56,13 @@ const formatSemester = (item: { name: string; startDate: string; endDate: string
   return `${item.name} (${start.toLocaleDateString("en-US", { month: "short", year: "numeric" })} - ${end.toLocaleDateString("en-US", { month: "short", year: "numeric" })})`;
 };
 
+const formatAmount = (value: number, currency = "BDT") =>
+  new Intl.NumberFormat("en-BD", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  }).format(value);
+
 export default function StudentSectionContent({ section }: Readonly<StudentSectionContentProps>) {
   const [loadingPageData, setLoadingPageData] = useState(false);
 
@@ -56,7 +71,7 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
   const [registeredCourses, setRegisteredCourses] = useState<StudentRegisteredCourse[]>([]);
   const [resultState, setResultState] = useState<StudentResultResponse | null>(null);
   const [submissions, setSubmissions] = useState<StudentSubmission[]>([]);
-  const [feeStatus, setFeeStatus] = useState<StudentFeeStatus | null>(null);
+  const [feeStatus, setFeeStatus] = useState<StudentFeeOverview | null>(null);
 
   const [timelineSemesterId, setTimelineSemesterId] = useState("");
   const [timelineType, setTimelineType] = useState<"ALL" | StudentClassworkType>("ALL");
@@ -88,6 +103,12 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
   const [editingAttachmentName, setEditingAttachmentName] = useState("");
   const [savingSubmissionId, setSavingSubmissionId] = useState("");
   const [deletingSubmissionId, setDeletingSubmissionId] = useState("");
+
+  const [selectedFeeSemesterId, setSelectedFeeSemesterId] = useState("");
+  const [feePaymentMode, setFeePaymentMode] = useState<"MONTHLY" | "FULL">("MONTHLY");
+  const [monthsCount, setMonthsCount] = useState("1");
+  const [initiatingPayment, setInitiatingPayment] = useState(false);
+  const [feePaymentErrors, setFeePaymentErrors] = useState<StudentFeePaymentFieldErrors>({});
 
   const [profileName, setProfileName] = useState("");
   const [profileImage, setProfileImage] = useState("");
@@ -198,6 +219,38 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
       setFeeStatus(null);
     }
   }, []);
+
+  useEffect(() => {
+    if (section !== "fees" || globalThis.window === undefined) {
+      return;
+    }
+
+    const params = new URLSearchParams(globalThis.window.location.search);
+    const paymentStatus = params.get("paymentStatus");
+
+    if (!paymentStatus) {
+      return;
+    }
+
+    if (paymentStatus === "success") {
+      toast.success("Payment completed successfully");
+    } else if (paymentStatus === "failed") {
+      toast.error("Payment failed. Please try again.");
+    } else if (paymentStatus === "cancelled") {
+      toast.warning("Payment was cancelled");
+    }
+
+    params.delete("paymentStatus");
+    params.delete("tranId");
+
+    const nextQuery = params.toString();
+    const nextUrl = nextQuery
+      ? `${globalThis.window.location.pathname}?${nextQuery}`
+      : globalThis.window.location.pathname;
+    globalThis.window.history.replaceState({}, "", nextUrl);
+
+    void loadFeeStatus();
+  }, [loadFeeStatus, section]);
 
   useEffect(() => {
     let cancelled = false;
@@ -334,6 +387,81 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
   const canCreateSubmission =
     submissionClassworkId.trim().length > 0 &&
     (submissionResponseText.trim().length > 0 || submissionAttachmentUrl.trim().length > 0);
+
+  const feeItemOptions = useMemo(
+    () =>
+      (feeStatus?.feeItems ?? []).map((item) => ({
+        value: item.semester.id,
+        label: `${item.semester.name} (${formatAmount(item.dueAmount, item.currency)} due)`,
+      })),
+    [feeStatus?.feeItems],
+  );
+
+  const selectedFeeItem = useMemo(
+    () => feeStatus?.feeItems.find((item) => item.semester.id === selectedFeeSemesterId) ?? null,
+    [feeStatus?.feeItems, selectedFeeSemesterId],
+  );
+
+  useEffect(() => {
+    if (!selectedFeeSemesterId && feeStatus?.feeItems[0]) {
+      setSelectedFeeSemesterId(feeStatus.feeItems[0].semester.id);
+    }
+  }, [feeStatus?.feeItems, selectedFeeSemesterId]);
+
+  const canInitiatePayment =
+    Boolean(selectedFeeItem) &&
+    selectedFeeItem.dueAmount > 0 &&
+    (feePaymentMode === "FULL" || Number(monthsCount) > 0);
+
+  const handleInitiateFeePayment = async () => {
+    setFeePaymentErrors({});
+
+    if (!selectedFeeItem) {
+      setFeePaymentErrors({ semesterId: "Select a semester/session fee first" });
+      return;
+    }
+
+    if (feePaymentMode === "MONTHLY" && Number(monthsCount) < 1) {
+      setFeePaymentErrors({ monthsCount: "Months count must be at least 1" });
+      return;
+    }
+
+    setInitiatingPayment(true);
+    try {
+      const response = await StudentPortalService.initiateFeePayment({
+        semesterId: selectedFeeItem.semester.id,
+        paymentMode: feePaymentMode,
+        monthsCount: feePaymentMode === "MONTHLY" ? Number(monthsCount) : undefined,
+      });
+
+      globalThis.window.location.href = response.paymentUrl;
+    } catch (error) {
+      if (error instanceof ApiRequestError) {
+        const fieldErrors: StudentFeePaymentFieldErrors = {};
+
+        for (const issue of error.fieldErrors) {
+          if (issue.path === "body.semesterId") {
+            fieldErrors.semesterId = issue.message;
+          } else if (issue.path === "body.paymentMode") {
+            fieldErrors.paymentMode = issue.message;
+          } else if (issue.path === "body.monthsCount") {
+            fieldErrors.monthsCount = issue.message;
+          }
+        }
+
+        if (!fieldErrors.semesterId && !fieldErrors.paymentMode && !fieldErrors.monthsCount) {
+          fieldErrors.form = error.message;
+        }
+
+        setFeePaymentErrors(fieldErrors);
+      }
+
+      const message = error instanceof Error ? error.message : "Failed to initiate fee payment";
+      toast.error(message);
+    } finally {
+      setInitiatingPayment(false);
+    }
+  };
 
   const handleCreateSubmission = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -891,26 +1019,138 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
     return (
       <article className="rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
         <h2 className="text-base font-semibold sm:text-lg">Fee Payment</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Payment integration is not live yet.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Pay semester/session fees securely via SSLCommerz. You can pay monthly installments or full due.
+        </p>
 
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           <article className="rounded-xl border border-border/70 bg-background/60 p-4">
-            <p className="text-xs text-muted-foreground">Module Status</p>
-            <p className="mt-1 text-lg font-semibold">{feeStatus?.status ?? "COMING_SOON"}</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {feeStatus?.message ?? "Fee payment module will be available soon."}
-            </p>
+            <p className="text-xs text-muted-foreground">Overall Summary</p>
+            <div className="mt-2 space-y-1 text-sm">
+              <p>
+                Configured:{" "}
+                <span className="font-semibold">{formatAmount(feeStatus?.summary.totalConfiguredAmount ?? 0)}</span>
+              </p>
+              <p>
+                Paid:{" "}
+                <span className="font-semibold text-emerald-600">{formatAmount(feeStatus?.summary.totalPaidAmount ?? 0)}</span>
+              </p>
+              <p>
+                Due:{" "}
+                <span className="font-semibold text-amber-600">{formatAmount(feeStatus?.summary.totalDueAmount ?? 0)}</span>
+              </p>
+            </div>
           </article>
 
           <article className="rounded-xl border border-border/70 bg-background/60 p-4">
-            <p className="text-xs text-muted-foreground">Planned Features</p>
-            <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-              <li>Online payment history and receipts</li>
-              <li>Due reminders and payment deadlines</li>
-              <li>Installment and scholarship adjustments</li>
-            </ul>
+            <p className="text-xs text-muted-foreground">Create Payment</p>
+            <div className="mt-2 space-y-3">
+              {feePaymentErrors.form ? (
+                <p className="text-sm text-destructive">{feePaymentErrors.form}</p>
+              ) : null}
+              <SearchableSelect
+                value={selectedFeeSemesterId}
+                onChange={(value) => {
+                  setSelectedFeeSemesterId(value);
+                  setFeePaymentErrors((current) => ({ ...current, semesterId: undefined }));
+                }}
+                options={feeItemOptions}
+                placeholder="Select semester/session"
+                searchPlaceholder="Search semester..."
+                emptyText="No configured fee found"
+                className={`text-sm ${feePaymentErrors.semesterId ? "border-destructive" : ""}`}
+              />
+              {feePaymentErrors.semesterId ? (
+                <p className="text-xs text-destructive">{feePaymentErrors.semesterId}</p>
+              ) : null}
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <SearchableSelect
+                  value={feePaymentMode}
+                  onChange={(value) => {
+                    setFeePaymentMode(value as "MONTHLY" | "FULL");
+                    setFeePaymentErrors((current) => ({
+                      ...current,
+                      paymentMode: undefined,
+                      monthsCount: undefined,
+                    }));
+                  }}
+                  options={[
+                    { value: "MONTHLY", label: "Monthly" },
+                    { value: "FULL", label: "Full Due" },
+                  ]}
+                  placeholder="Select mode"
+                  searchPlaceholder="Search mode..."
+                  emptyText="No mode found"
+                  className={`text-sm ${feePaymentErrors.paymentMode ? "border-destructive" : ""}`}
+                />
+                <input
+                  type="number"
+                  min={1}
+                  value={monthsCount}
+                  onChange={(event) => {
+                    setMonthsCount(event.target.value);
+                    setFeePaymentErrors((current) => ({ ...current, monthsCount: undefined }));
+                  }}
+                  disabled={feePaymentMode !== "MONTHLY"}
+                  aria-invalid={Boolean(feePaymentErrors.monthsCount)}
+                  className={`rounded-xl border bg-background px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60 ${
+                    feePaymentErrors.monthsCount ? "border-destructive" : "border-border"
+                  }`}
+                  placeholder="Months (1/2/3...)"
+                />
+                {feePaymentErrors.paymentMode ? (
+                  <p className="text-xs text-destructive">{feePaymentErrors.paymentMode}</p>
+                ) : null}
+                {feePaymentErrors.monthsCount ? (
+                  <p className="text-xs text-destructive">{feePaymentErrors.monthsCount}</p>
+                ) : null}
+              </div>
+
+              {selectedFeeItem ? (
+                <div className="rounded-lg border border-border/70 bg-card/80 px-3 py-2 text-xs text-muted-foreground">
+                  <p>Total: {formatAmount(selectedFeeItem.totalFeeAmount, selectedFeeItem.currency)}</p>
+                  <p>Monthly: {formatAmount(selectedFeeItem.monthlyFeeAmount, selectedFeeItem.currency)}</p>
+                  <p>Paid: {formatAmount(selectedFeeItem.paidAmount, selectedFeeItem.currency)}</p>
+                  <p className="font-medium text-foreground">
+                    Due: {formatAmount(selectedFeeItem.dueAmount, selectedFeeItem.currency)}
+                  </p>
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={() => void handleInitiateFeePayment()}
+                disabled={initiatingPayment || !canInitiatePayment}
+                className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {initiatingPayment ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Pay with SSLCommerz
+              </button>
+            </div>
           </article>
         </div>
+
+        <article className="mt-4 rounded-xl border border-border/70 bg-background/60 p-4">
+          <h3 className="text-sm font-semibold">Payment History</h3>
+          {feeStatus?.paymentHistory.length ? (
+            <div className="mt-3 space-y-2">
+              {feeStatus.paymentHistory.map((item) => (
+                <div key={item.id} className="rounded-lg border border-border/70 bg-background px-3 py-2 text-sm">
+                  <p className="font-medium">{item.semester.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.paymentMode} • {item.monthsCovered} month(s) • {formatAmount(item.amount, item.currency)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Tran ID: {item.tranId} • {item.paidAt ? formatDateTime(item.paidAt) : formatDateTime(item.createdAt)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">No payment history found yet.</p>
+          )}
+        </article>
       </article>
     );
   }

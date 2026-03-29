@@ -1,6 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 
+const sslCommerzLogoSmall =
+  "https://securepay.sslcommerz.com/public/image/SSLCommerz-Pay-With-logo-All-Size-04.png";
+const sslCommerzLogoMedium =
+  "https://securepay.sslcommerz.com/public/image/SSLCommerz-Pay-With-logo-All-Size-05.png";
+const sslCommerzLogoLarge =
+  "https://securepay.sslcommerz.com/public/image/SSLCommerz-Pay-With-logo-All-Size-01.png";
+
 const footerColumns = [
   {
     title: "Product",
@@ -91,6 +98,41 @@ export default function FooterSection() {
             </div>
           ))}
         </div>
+        <div className="space-y-2 pt-10 w-full">
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+            Payment Partner
+          </p>
+          <Link
+            target="_blank"
+            href="https://www.sslcommerz.com/"
+            title="SSLCommerz"
+            rel="noopener noreferrer"
+            className="inline-block w-full"
+          >
+            <Image
+              src={sslCommerzLogoSmall}
+              alt="SSLCommerz"
+              width={1920}
+              height={92}
+              className="h-auto w-full md:hidden rounded-sm"
+            />
+            <Image
+              src={sslCommerzLogoMedium}
+              alt="SSLCommerz"
+              width={1920}
+              height={92}
+              className="hidden h-auto w-full md:block lg:hidden rounded-sm"
+            />
+            <Image
+              src={sslCommerzLogoLarge}
+              alt="SSLCommerz"
+              width={1920}
+              height={92}
+              className="hidden h-auto w-full lg:block rounded-sm"
+            />
+          </Link>
+        </div>
+
         <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6 text-xs text-muted-foreground">
           <p>© 2026 Biddyaloy. All rights reserved.</p>
           <div className="flex flex-wrap gap-4">

@@ -6,8 +6,11 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 
 import {
+  ApiRequestError,
   type DepartmentTeacherJobApplication,
   type DepartmentStudentAdmissionApplication,
+  type DepartmentFeeConfiguration,
+  type DepartmentStudentPaymentInfo,
   type Batch,
   DepartmentManagementService,
   type AccountStatus,
@@ -39,6 +42,13 @@ const formatDateDDMMYYYY = (value: string | Date) =>
     year: "numeric",
   }).format(new Date(value));
 
+const formatAmount = (value: number, currency = "BDT") =>
+  new Intl.NumberFormat("en-BD", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  }).format(value);
+
 const STATUS_OPTIONS: AccountStatus[] = ["PENDING", "ACTIVE", "DEACTIVATED", "BANNED"];
 const TEACHER_APPLICATION_FILTER_OPTIONS: Array<TeacherJobApplicationStatus | "ALL"> = [
   "ALL",
@@ -54,6 +64,65 @@ const STUDENT_APPLICATION_FILTER_OPTIONS: Array<StudentAdmissionApplicationStatu
   "APPROVED",
   "REJECTED",
 ];
+
+type FeeConfigurationFieldErrors = {
+  semesterId?: string;
+  totalFeeAmount?: string;
+  monthlyFeeAmount?: string;
+  form?: string;
+};
+
+type StudentPaymentLookupFieldErrors = {
+  studentsId?: string;
+  semesterId?: string;
+  form?: string;
+};
+
+const mapFeeConfigurationFieldErrors = (error: unknown): FeeConfigurationFieldErrors => {
+  if (!(error instanceof ApiRequestError)) {
+    return {};
+  }
+
+  const fieldErrors: FeeConfigurationFieldErrors = {};
+
+  for (const issue of error.fieldErrors) {
+    if (issue.path === "body.semesterId") {
+      fieldErrors.semesterId = issue.message;
+    } else if (issue.path === "body.totalFeeAmount") {
+      fieldErrors.totalFeeAmount = issue.message;
+    } else if (issue.path === "body.monthlyFeeAmount") {
+      fieldErrors.monthlyFeeAmount = issue.message;
+    }
+  }
+
+  if (!fieldErrors.semesterId && !fieldErrors.totalFeeAmount && !fieldErrors.monthlyFeeAmount) {
+    fieldErrors.form = error.message;
+  }
+
+  return fieldErrors;
+};
+
+const mapStudentPaymentLookupFieldErrors = (error: unknown): StudentPaymentLookupFieldErrors => {
+  if (!(error instanceof ApiRequestError)) {
+    return {};
+  }
+
+  const fieldErrors: StudentPaymentLookupFieldErrors = {};
+
+  for (const issue of error.fieldErrors) {
+    if (issue.path === "params.studentsId") {
+      fieldErrors.studentsId = issue.message;
+    } else if (issue.path === "query.semesterId") {
+      fieldErrors.semesterId = issue.message;
+    }
+  }
+
+  if (!fieldErrors.studentsId && !fieldErrors.semesterId) {
+    fieldErrors.form = error.message;
+  }
+
+  return fieldErrors;
+};
 
 export default function DepartmentSectionContent({
   section,
@@ -166,6 +235,22 @@ export default function DepartmentSectionContent({
   const [creatingStudent, setCreatingStudent] = useState(false);
   const [updatingStudentId, setUpdatingStudentId] = useState("");
   const [studentSearch, setStudentSearch] = useState("");
+
+  const [feeConfigurations, setFeeConfigurations] = useState<DepartmentFeeConfiguration[]>([]);
+  const [feeSemesterId, setFeeSemesterId] = useState("");
+  const [feeTotalAmount, setFeeTotalAmount] = useState("");
+  const [feeMonthlyAmount, setFeeMonthlyAmount] = useState("");
+  const [savingFeeConfiguration, setSavingFeeConfiguration] = useState(false);
+  const [feeConfigurationErrors, setFeeConfigurationErrors] =
+    useState<FeeConfigurationFieldErrors>({});
+  const [studentPaymentLookupId, setStudentPaymentLookupId] = useState("");
+  const [studentPaymentSemesterId, setStudentPaymentSemesterId] = useState("");
+  const [studentPaymentLookupErrors, setStudentPaymentLookupErrors] =
+    useState<StudentPaymentLookupFieldErrors>({});
+  const [studentPaymentInfo, setStudentPaymentInfo] = useState<DepartmentStudentPaymentInfo | null>(
+    null,
+  );
+  const [loadingStudentPaymentInfo, setLoadingStudentPaymentInfo] = useState(false);
 
   const [teacherApplications, setTeacherApplications] = useState<DepartmentTeacherJobApplication[]>([]);
   const [teacherApplicationFilter, setTeacherApplicationFilter] = useState<
@@ -401,6 +486,11 @@ export default function DepartmentSectionContent({
     setStudents(data);
   };
 
+  const reloadFeeConfigurations = async (semesterId?: string) => {
+    const data = await DepartmentManagementService.listFeeConfigurations(semesterId);
+    setFeeConfigurations(data);
+  };
+
   const reloadTeacherApplications = async (status?: TeacherJobApplicationStatus) => {
     const data = await DepartmentManagementService.listTeacherApplications(status);
     setTeacherApplications(data);
@@ -461,6 +551,13 @@ export default function DepartmentSectionContent({
 
         if (section === "students") {
           await reloadStudents();
+        }
+
+        if (section === "fees") {
+          await Promise.all([reloadSemesters(), reloadFeeConfigurations()]);
+          if (!cancelled) {
+            setStudentPaymentInfo(null);
+          }
         }
 
         if (section === "teacherApplications") {
@@ -534,6 +631,28 @@ export default function DepartmentSectionContent({
       setSectionBatchId(batches[0].id);
     }
   }, [batches, sectionBatchId]);
+
+  useEffect(() => {
+    if (!feeSemesterId && semesters.length > 0) {
+      setFeeSemesterId(semesters[0].id);
+    }
+  }, [feeSemesterId, semesters]);
+
+  useEffect(() => {
+    if (!feeSemesterId) {
+      return;
+    }
+
+    const existing = feeConfigurations.find((item) => item.semesterId === feeSemesterId);
+    if (existing) {
+      setFeeTotalAmount(String(existing.totalFeeAmount));
+      setFeeMonthlyAmount(String(existing.monthlyFeeAmount));
+      return;
+    }
+
+    setFeeTotalAmount("");
+    setFeeMonthlyAmount("");
+  }, [feeConfigurations, feeSemesterId]);
 
   useEffect(() => {
     if (!assignmentBatchId && batches.length > 0) {
@@ -1150,6 +1269,88 @@ export default function DepartmentSectionContent({
       toast.error(message);
     } finally {
       setUpdatingStudentId("");
+    }
+  };
+
+  const onSaveFeeConfiguration = async (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+    setFeeConfigurationErrors({});
+
+    const totalFeeAmount = Number(feeTotalAmount);
+    const monthlyFeeAmount = Number(feeMonthlyAmount);
+
+    if (!feeSemesterId) {
+      setFeeConfigurationErrors({ semesterId: "Select semester/session first" });
+      return;
+    }
+
+    if (!Number.isFinite(totalFeeAmount) || totalFeeAmount <= 0) {
+      setFeeConfigurationErrors({ totalFeeAmount: "Total fee amount must be a positive number" });
+      return;
+    }
+
+    if (!Number.isFinite(monthlyFeeAmount) || monthlyFeeAmount <= 0) {
+      setFeeConfigurationErrors({ monthlyFeeAmount: "Monthly fee amount must be a positive number" });
+      return;
+    }
+
+    if (monthlyFeeAmount > totalFeeAmount) {
+      setFeeConfigurationErrors({
+        monthlyFeeAmount: "Monthly fee amount cannot exceed total fee amount",
+      });
+      return;
+    }
+
+    setSavingFeeConfiguration(true);
+    try {
+      await DepartmentManagementService.upsertFeeConfiguration({
+        semesterId: feeSemesterId,
+        totalFeeAmount,
+        monthlyFeeAmount,
+      });
+
+      await reloadFeeConfigurations();
+      setFeeConfigurationErrors({});
+      toast.success("Fee configuration saved successfully");
+    } catch (error) {
+      const fieldErrors = mapFeeConfigurationFieldErrors(error);
+      if (Object.keys(fieldErrors).length > 0) {
+        setFeeConfigurationErrors(fieldErrors);
+      }
+      const message = error instanceof Error ? error.message : "Failed to save fee configuration";
+      toast.error(message);
+    } finally {
+      setSavingFeeConfiguration(false);
+    }
+  };
+
+  const onLookupStudentPayment = async (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+    setStudentPaymentLookupErrors({});
+
+    if (studentPaymentLookupId.trim().length < 2) {
+      setStudentPaymentLookupErrors({ studentsId: "Provide a valid student ID" });
+      return;
+    }
+
+    setLoadingStudentPaymentInfo(true);
+    try {
+      const data = await DepartmentManagementService.getStudentPaymentInfo(
+        studentPaymentLookupId.trim(),
+        studentPaymentSemesterId || undefined,
+      );
+      setStudentPaymentInfo(data);
+      setStudentPaymentLookupErrors({});
+    } catch (error) {
+      const fieldErrors = mapStudentPaymentLookupFieldErrors(error);
+      if (Object.keys(fieldErrors).length > 0) {
+        setStudentPaymentLookupErrors(fieldErrors);
+      }
+      const message = error instanceof Error ? error.message : "Failed to fetch student payment info";
+      toast.error(message);
+      setStudentPaymentInfo(null);
+    } finally {
+      setLoadingStudentPaymentInfo(false);
     }
   };
 
@@ -2997,6 +3198,199 @@ export default function DepartmentSectionContent({
           Create teacher job and student admission posts for your department.
         </p>
         <PostingManagementPanel scope="DEPARTMENT" />
+      </article>
+    );
+  }
+
+  if (section === "fees") {
+    return (
+      <article className="space-y-4 rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
+        <h2 className="text-lg font-semibold">Fee Management</h2>
+        <p className="text-sm text-muted-foreground">
+          Configure semester/session wise fees and inspect student payment details by student ID.
+        </p>
+        {loadingIndicator}
+
+        <form className="space-y-3" onSubmit={onSaveFeeConfiguration}>
+          {feeConfigurationErrors.form ? (
+            <p className="text-sm text-destructive">{feeConfigurationErrors.form}</p>
+          ) : null}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <SearchableSelect
+              value={feeSemesterId}
+              onChange={(value) => {
+                setFeeSemesterId(value);
+                setFeeConfigurationErrors((current) => ({ ...current, semesterId: undefined }));
+              }}
+              options={semesters.map((item) => ({ value: item.id, label: item.name }))}
+              placeholder="Select semester/session"
+              searchPlaceholder="Search semester..."
+              emptyText="No semester found"
+              className={feeConfigurationErrors.semesterId ? "border-destructive" : undefined}
+            />
+            {feeConfigurationErrors.semesterId ? (
+              <p className="text-xs text-destructive md:col-span-3">{feeConfigurationErrors.semesterId}</p>
+            ) : null}
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={feeTotalAmount}
+              onChange={(event) => {
+                setFeeTotalAmount(event.target.value);
+                setFeeConfigurationErrors((current) => ({ ...current, totalFeeAmount: undefined }));
+              }}
+              placeholder="Total fee amount"
+              aria-invalid={Boolean(feeConfigurationErrors.totalFeeAmount)}
+              className={`rounded-xl border bg-background px-3 py-2 text-sm ${
+                feeConfigurationErrors.totalFeeAmount ? "border-destructive" : "border-border"
+              }`}
+            />
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={feeMonthlyAmount}
+              onChange={(event) => {
+                setFeeMonthlyAmount(event.target.value);
+                setFeeConfigurationErrors((current) => ({ ...current, monthlyFeeAmount: undefined }));
+              }}
+              placeholder="Monthly fee amount"
+              aria-invalid={Boolean(feeConfigurationErrors.monthlyFeeAmount)}
+              className={`rounded-xl border bg-background px-3 py-2 text-sm ${
+                feeConfigurationErrors.monthlyFeeAmount ? "border-destructive" : "border-border"
+              }`}
+            />
+            {feeConfigurationErrors.totalFeeAmount ? (
+              <p className="text-xs text-destructive">{feeConfigurationErrors.totalFeeAmount}</p>
+            ) : null}
+            {feeConfigurationErrors.monthlyFeeAmount ? (
+              <p className="text-xs text-destructive">{feeConfigurationErrors.monthlyFeeAmount}</p>
+            ) : null}
+          </div>
+
+          <button
+            type="submit"
+            disabled={savingFeeConfiguration}
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            {savingFeeConfiguration ? "Saving..." : "Save Fee Configuration"}
+          </button>
+        </form>
+
+        <div className="space-y-2">
+          {loadingPageData ? (
+            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading fee configurations...
+            </div>
+          ) : null}
+          {feeConfigurations.map((item) => (
+            <div key={item.id} className="rounded-xl border border-border/70 bg-background/70 p-3 text-sm">
+              <p className="font-medium">{item.semester.name}</p>
+              <p className="text-muted-foreground">
+                Total: {formatAmount(item.totalFeeAmount, item.currency)} | Monthly: {formatAmount(item.monthlyFeeAmount, item.currency)}
+              </p>
+              <p className="text-muted-foreground">
+                Collected: {formatAmount(item.totalPaidAmount, item.currency)} | Outstanding: {formatAmount(item.outstandingAmount, item.currency)}
+              </p>
+            </div>
+          ))}
+          {feeConfigurations.length === 0 && !loadingPageData ? (
+            <p className="rounded-xl border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+              No fee configuration found yet.
+            </p>
+          ) : null}
+        </div>
+
+        <form className="space-y-3 rounded-xl border border-border/70 bg-background/60 p-4" onSubmit={onLookupStudentPayment}>
+          <h3 className="text-sm font-semibold">Student Payment Info</h3>
+          {studentPaymentLookupErrors.form ? (
+            <p className="text-sm text-destructive">{studentPaymentLookupErrors.form}</p>
+          ) : null}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <input
+              value={studentPaymentLookupId}
+              onChange={(event) => {
+                setStudentPaymentLookupId(event.target.value);
+                setStudentPaymentLookupErrors((current) => ({ ...current, studentsId: undefined }));
+              }}
+              placeholder="Student ID"
+              aria-invalid={Boolean(studentPaymentLookupErrors.studentsId)}
+              className={`rounded-xl border bg-background px-3 py-2 text-sm ${
+                studentPaymentLookupErrors.studentsId ? "border-destructive" : "border-border"
+              }`}
+            />
+            <SearchableSelect
+              value={studentPaymentSemesterId}
+              onChange={(value) => {
+                setStudentPaymentSemesterId(value);
+                setStudentPaymentLookupErrors((current) => ({ ...current, semesterId: undefined }));
+              }}
+              options={[{ value: "", label: "All semesters" }, ...semesters.map((item) => ({ value: item.id, label: item.name }))]}
+              placeholder="All semesters"
+              searchPlaceholder="Search semester..."
+              emptyText="No semester found"
+              className={studentPaymentLookupErrors.semesterId ? "border-destructive" : undefined}
+            />
+            <button
+              type="submit"
+              disabled={loadingStudentPaymentInfo}
+              className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+            >
+              {loadingStudentPaymentInfo ? "Loading..." : "Lookup"}
+            </button>
+            {studentPaymentLookupErrors.studentsId ? (
+              <p className="text-xs text-destructive">{studentPaymentLookupErrors.studentsId}</p>
+            ) : null}
+            {studentPaymentLookupErrors.semesterId ? (
+              <p className="text-xs text-destructive">{studentPaymentLookupErrors.semesterId}</p>
+            ) : null}
+          </div>
+        </form>
+
+        {studentPaymentInfo ? (
+          <div className="space-y-3 rounded-xl border border-border/70 bg-background/60 p-4 text-sm">
+            <p className="font-semibold">
+              {studentPaymentInfo.student.user.name} ({studentPaymentInfo.student.studentsId})
+            </p>
+            <p className="text-muted-foreground">{studentPaymentInfo.student.user.email}</p>
+
+            <div className="space-y-2">
+              {studentPaymentInfo.feeSummaries.map((item) => (
+                <div key={item.feeConfigurationId} className="rounded-lg border border-border/70 bg-background px-3 py-2">
+                  <p className="font-medium">{item.semester.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Paid: {formatAmount(item.paidAmount, item.currency)} | Due: {formatAmount(item.dueAmount, item.currency)}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              {studentPaymentInfo.paymentHistory.map((item) => (
+                <div key={item.id} className="rounded-lg border border-border/70 bg-background px-3 py-2 text-xs">
+                  <p className="font-medium">
+                    {item.semester.name} • {item.paymentMode} • {formatAmount(item.amount, item.currency)}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Status: {item.status} | Tran ID: {item.tranId}
+                  </p>
+                </div>
+              ))}
+              {studentPaymentInfo.paymentHistory.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No payment history found for this student.</p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {!studentPaymentInfo && loadingStudentPaymentInfo ? (
+          <div className="inline-flex items-center gap-2 rounded-xl border border-border/70 bg-background/60 px-3 py-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading student payment info...
+          </div>
+        ) : null}
       </article>
     );
   }

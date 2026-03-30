@@ -43,6 +43,7 @@ import PostingManagementPanel from "@/Components/PostingManagement/PostingManage
 import NoticeWorkspace from "@/Components/Notice/NoticeWorkspace";
 import RoutineBrowser from "@/Components/Routine/RoutineBrowser";
 import SidebarProfileCard from "@/Components/SidebarProfileCard";
+import ChangePasswordCard from "@/Components/Auth/ChangePasswordCard";
 import { NoticeService } from "@/services/Notice/notice.service";
 import SubAdminAccountForm from "./SubAdminAccountForm";
 import type { AdminDashboardSection } from "./types";
@@ -708,6 +709,8 @@ export default function AdminDashboard({
                   </button>
                 </form>
               </article>
+
+              <ChangePasswordCard />
             </div>
           )}
 

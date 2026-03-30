@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import NoticeWorkspace from "@/Components/Notice/NoticeWorkspace";
 import RoutineBrowser from "@/Components/Routine/RoutineBrowser";
+import ChangePasswordCard from "@/Components/Auth/ChangePasswordCard";
 import ImagebbUploader from "@/Components/ui/ImagebbUploader";
 import SearchableSelect from "@/Components/ui/SearchableSelect";
 
@@ -1382,6 +1383,8 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
             </button>
           </form>
         </article>
+
+        <ChangePasswordCard />
 
         <article className="rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">

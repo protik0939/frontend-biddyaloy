@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import NoticeWorkspace from "@/Components/Notice/NoticeWorkspace";
+import ChangePasswordCard from "@/Components/Auth/ChangePasswordCard";
 
 import {
   ApiRequestError,
@@ -1841,143 +1842,147 @@ export default function DepartmentSectionContent({
 
   if (section === "profile") {
     return (
-      <article className="rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
-        <h2 className="text-lg font-semibold">Department Profile</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Update department name and display metadata.
-        </p>
+      <div className="space-y-4">
+        <article className="rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
+          <h2 className="text-lg font-semibold">Department Profile</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Update department name and display metadata.
+          </p>
 
-        <form className="mt-4 space-y-4" onSubmit={onUpdateProfile}>
-          {loadingIndicator}
-          <ImagebbUploader
-            label="Profile Image"
-            helperText="Square crop (1:1). Optimized around 100KB before upload."
-            value={profileImage}
-            cropRatio={1}
-            compressionSizeKB={100}
-            onChange={(url) => setProfileImage(url)}
-          />
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="department-admin-name">
-              Admin Name
-            </label>
-            <input
-              id="department-admin-name"
-              value={profileName}
-              onChange={(event) => setProfileName(event.target.value)}
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+          <form className="mt-4 space-y-4" onSubmit={onUpdateProfile}>
+            {loadingIndicator}
+            <ImagebbUploader
+              label="Profile Image"
+              helperText="Square crop (1:1). Optimized around 100KB before upload."
+              value={profileImage}
+              cropRatio={1}
+              compressionSizeKB={100}
+              onChange={(url) => setProfileImage(url)}
             />
-          </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="department-full-name">
-                Full Name
+              <label className="text-sm font-medium" htmlFor="department-admin-name">
+                Admin Name
               </label>
               <input
-                id="department-full-name"
-                value={profileFullName}
-                onChange={(event) => setProfileFullName(event.target.value)}
+                id="department-admin-name"
+                value={profileName}
+                onChange={(event) => setProfileName(event.target.value)}
                 className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="department-short-name">
-                Short Name
-              </label>
-              <input
-                id="department-short-name"
-                value={profileShortName}
-                onChange={(event) => setProfileShortName(event.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="department-description">
-              Description
-            </label>
-            <textarea
-              id="department-description"
-              rows={4}
-              value={profileDescription}
-              onChange={(event) => setProfileDescription(event.target.value)}
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
-            />
-          </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="department-full-name">
+                  Full Name
+                </label>
+                <input
+                  id="department-full-name"
+                  value={profileFullName}
+                  onChange={(event) => setProfileFullName(event.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="department-short-name">
+                  Short Name
+                </label>
+                <input
+                  id="department-short-name"
+                  value={profileShortName}
+                  onChange={(event) => setProfileShortName(event.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+                />
+              </div>
+            </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="department-contact-no">
-                Contact Number
+              <label className="text-sm font-medium" htmlFor="department-description">
+                Description
               </label>
-              <input
-                id="department-contact-no"
-                value={profileContactNo}
-                onChange={(event) => setProfileContactNo(event.target.value)}
+              <textarea
+                id="department-description"
+                rows={4}
+                value={profileDescription}
+                onChange={(event) => setProfileDescription(event.target.value)}
                 className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="department-blood-group">
-                Blood Group
-              </label>
-              <input
-                id="department-blood-group"
-                value={profileBloodGroup}
-                onChange={(event) => setProfileBloodGroup(event.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
-              />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="department-present-address">
-                Present Address
-              </label>
-              <input
-                id="department-present-address"
-                value={profilePresentAddress}
-                onChange={(event) => setProfilePresentAddress(event.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
-              />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="department-contact-no">
+                  Contact Number
+                </label>
+                <input
+                  id="department-contact-no"
+                  value={profileContactNo}
+                  onChange={(event) => setProfileContactNo(event.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="department-blood-group">
+                  Blood Group
+                </label>
+                <input
+                  id="department-blood-group"
+                  value={profileBloodGroup}
+                  onChange={(event) => setProfileBloodGroup(event.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="department-permanent-address">
-                Permanent Address
-              </label>
-              <input
-                id="department-permanent-address"
-                value={profilePermanentAddress}
-                onChange={(event) => setProfilePermanentAddress(event.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
-              />
-            </div>
-          </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="department-gender">
-              Gender
-            </label>
-            <input
-              id="department-gender"
-              value={profileGender}
-              onChange={(event) => setProfileGender(event.target.value)}
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={savingProfile}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save Changes
-          </button>
-        </form>
-      </article>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="department-present-address">
+                  Present Address
+                </label>
+                <input
+                  id="department-present-address"
+                  value={profilePresentAddress}
+                  onChange={(event) => setProfilePresentAddress(event.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="department-permanent-address">
+                  Permanent Address
+                </label>
+                <input
+                  id="department-permanent-address"
+                  value={profilePermanentAddress}
+                  onChange={(event) => setProfilePermanentAddress(event.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="department-gender">
+                Gender
+              </label>
+              <input
+                id="department-gender"
+                value={profileGender}
+                onChange={(event) => setProfileGender(event.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/40 transition focus:ring"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={savingProfile}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save Changes
+            </button>
+          </form>
+        </article>
+
+        <ChangePasswordCard />
+      </div>
     );
   }
 

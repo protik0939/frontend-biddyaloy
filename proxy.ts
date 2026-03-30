@@ -12,6 +12,8 @@ const PUBLIC_ROUTES = new Set([
   "/",
   "/login",
   "/signup",
+  "/forgot-password",
+  "/reset-password",
   "/teacher-apply",
   "/student-apply",
   "/verify-account",

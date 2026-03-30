@@ -2,6 +2,7 @@
 
 import { Loader2, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { logoutAction } from "./auth-actions";
 import {
   getVerificationStatus,
   resendVerificationOtp,
@@ -208,6 +209,18 @@ export default function VerifyAccount({
                   Resend email
                 </button>
               ) : null}
+
+              <div className="border-t border-border/60 pt-4 text-center">
+                <p className="mb-3 text-sm text-muted-foreground">Want to use another account?</p>
+                <form action={logoutAction}>
+                  <button
+                    type="submit"
+                    className="inline-flex w-full items-center justify-center rounded-xl border border-border/70 bg-background px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-muted/50"
+                  >
+                    Log out and sign in with another account
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
         </section>

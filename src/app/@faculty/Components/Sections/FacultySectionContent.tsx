@@ -4,6 +4,7 @@ import { Loader2, Save, UserPlus2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import NoticeWorkspace from "@/Components/Notice/NoticeWorkspace";
+import ChangePasswordCard from "@/Components/Auth/ChangePasswordCard";
 
 import {
   createDepartmentAccount,
@@ -201,134 +202,138 @@ export default function FacultySectionContent({
 
   if (section === "profile") {
     return (
-      <article className="rounded-xl border border-border/70 bg-background/70 p-4">
-        <h2 className="text-base font-semibold">Edit Faculty Profile</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Update faculty full name, short name, description, and optional faculty id.
-        </p>
+      <div className="space-y-4">
+        <article className="rounded-xl border border-border/70 bg-background/70 p-4">
+          <h2 className="text-base font-semibold">Edit Faculty Profile</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Update faculty full name, short name, description, and optional faculty id.
+          </p>
 
-        <form className="mt-4 space-y-3" onSubmit={onUpdateProfile}>
-          <ImagebbUploader
-            label="Profile Image"
-            helperText="Square crop (1:1). Optimized around 100KB before upload."
-            value={profileImage}
-            cropRatio={1}
-            compressionSizeKB={100}
-            onChange={(url) => setProfileImage(url)}
-          />
+          <form className="mt-4 space-y-3" onSubmit={onUpdateProfile}>
+            <ImagebbUploader
+              label="Profile Image"
+              helperText="Square crop (1:1). Optimized around 100KB before upload."
+              value={profileImage}
+              cropRatio={1}
+              compressionSizeKB={100}
+              onChange={(url) => setProfileImage(url)}
+            />
 
-          {loadingProfile ? (
-            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading current profile...
+            {loadingProfile ? (
+              <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading current profile...
+              </div>
+            ) : null}
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="block space-y-1 text-sm" htmlFor="faculty-full-name">
+                <span className="font-medium">Full Name</span>
+                <input
+                  id="faculty-full-name"
+                  value={profileFullName}
+                  onChange={(event) => setProfileFullName(event.target.value)}
+                  placeholder="Faculty of Science"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                />
+              </label>
+
+              <label className="block space-y-1 text-sm" htmlFor="faculty-short-name">
+                <span className="font-medium">Short Name (optional)</span>
+                <input
+                  id="faculty-short-name"
+                  value={profileShortName}
+                  onChange={(event) => setProfileShortName(event.target.value)}
+                  placeholder="FOS"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                />
+              </label>
             </div>
-          ) : null}
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label className="block space-y-1 text-sm" htmlFor="faculty-full-name">
-              <span className="font-medium">Full Name</span>
-              <input
-                id="faculty-full-name"
-                value={profileFullName}
-                onChange={(event) => setProfileFullName(event.target.value)}
-                placeholder="Faculty of Science"
+            <label className="block space-y-1 text-sm" htmlFor="faculty-description">
+              <span className="font-medium">Description (optional)</span>
+              <textarea
+                id="faculty-description"
+                value={profileDescription}
+                onChange={(event) => setProfileDescription(event.target.value)}
+                rows={4}
+                placeholder="Brief summary of this faculty"
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
               />
             </label>
 
-            <label className="block space-y-1 text-sm" htmlFor="faculty-short-name">
-              <span className="font-medium">Short Name (optional)</span>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="block space-y-1 text-sm" htmlFor="faculty-contact-no">
+                <span className="font-medium">Contact Number (optional)</span>
+                <input
+                  id="faculty-contact-no"
+                  value={profileContactNo}
+                  onChange={(event) => setProfileContactNo(event.target.value)}
+                  placeholder="Contact number"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                />
+              </label>
+
+              <label className="block space-y-1 text-sm" htmlFor="faculty-blood-group">
+                <span className="font-medium">Blood Group (optional)</span>
+                <input
+                  id="faculty-blood-group"
+                  value={profileBloodGroup}
+                  onChange={(event) => setProfileBloodGroup(event.target.value)}
+                  placeholder="Blood group"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                />
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="block space-y-1 text-sm" htmlFor="faculty-present-address">
+                <span className="font-medium">Present Address (optional)</span>
+                <input
+                  id="faculty-present-address"
+                  value={profilePresentAddress}
+                  onChange={(event) => setProfilePresentAddress(event.target.value)}
+                  placeholder="Present address"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                />
+              </label>
+
+              <label className="block space-y-1 text-sm" htmlFor="faculty-permanent-address">
+                <span className="font-medium">Permanent Address (optional)</span>
+                <input
+                  id="faculty-permanent-address"
+                  value={profilePermanentAddress}
+                  onChange={(event) => setProfilePermanentAddress(event.target.value)}
+                  placeholder="Permanent address"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
+                />
+              </label>
+            </div>
+
+            <label className="block space-y-1 text-sm" htmlFor="faculty-gender">
+              <span className="font-medium">Gender (optional)</span>
               <input
-                id="faculty-short-name"
-                value={profileShortName}
-                onChange={(event) => setProfileShortName(event.target.value)}
-                placeholder="FOS"
+                id="faculty-gender"
+                value={profileGender}
+                onChange={(event) => setProfileGender(event.target.value)}
+                placeholder="Gender"
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
               />
             </label>
-          </div>
 
-          <label className="block space-y-1 text-sm" htmlFor="faculty-description">
-            <span className="font-medium">Description (optional)</span>
-            <textarea
-              id="faculty-description"
-              value={profileDescription}
-              onChange={(event) => setProfileDescription(event.target.value)}
-              rows={4}
-              placeholder="Brief summary of this faculty"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
-            />
-          </label>
+            <button
+              type="submit"
+              disabled={savingProfile}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save Changes
+            </button>
+          </form>
+        </article>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label className="block space-y-1 text-sm" htmlFor="faculty-contact-no">
-              <span className="font-medium">Contact Number (optional)</span>
-              <input
-                id="faculty-contact-no"
-                value={profileContactNo}
-                onChange={(event) => setProfileContactNo(event.target.value)}
-                placeholder="Contact number"
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
-              />
-            </label>
-
-            <label className="block space-y-1 text-sm" htmlFor="faculty-blood-group">
-              <span className="font-medium">Blood Group (optional)</span>
-              <input
-                id="faculty-blood-group"
-                value={profileBloodGroup}
-                onChange={(event) => setProfileBloodGroup(event.target.value)}
-                placeholder="Blood group"
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
-              />
-            </label>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label className="block space-y-1 text-sm" htmlFor="faculty-present-address">
-              <span className="font-medium">Present Address (optional)</span>
-              <input
-                id="faculty-present-address"
-                value={profilePresentAddress}
-                onChange={(event) => setProfilePresentAddress(event.target.value)}
-                placeholder="Present address"
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
-              />
-            </label>
-
-            <label className="block space-y-1 text-sm" htmlFor="faculty-permanent-address">
-              <span className="font-medium">Permanent Address (optional)</span>
-              <input
-                id="faculty-permanent-address"
-                value={profilePermanentAddress}
-                onChange={(event) => setProfilePermanentAddress(event.target.value)}
-                placeholder="Permanent address"
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
-              />
-            </label>
-          </div>
-
-          <label className="block space-y-1 text-sm" htmlFor="faculty-gender">
-            <span className="font-medium">Gender (optional)</span>
-            <input
-              id="faculty-gender"
-              value={profileGender}
-              onChange={(event) => setProfileGender(event.target.value)}
-              placeholder="Gender"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none ring-primary/30 focus:ring"
-            />
-          </label>
-
-          <button
-            type="submit"
-            disabled={savingProfile}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save Changes
-          </button>
-        </form>
-      </article>
+        <ChangePasswordCard />
+      </div>
     );
   }
 

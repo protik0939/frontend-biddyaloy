@@ -95,6 +95,11 @@ export default function Login({ errorMessage, fieldErrors, fieldValues }: Readon
                     <p className="mt-2 text-xs text-red-700">{fieldErrors.password}</p>
                   ) : null}
                 </label>
+                <div className="flex justify-end">
+                  <Link href="/forgot-password" className="text-xs font-semibold text-primary hover:text-primary/80">
+                    Forgot password?
+                  </Link>
+                </div>
                 {errorMessage ? (
                   <p className="rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700">
                     {errorMessage}

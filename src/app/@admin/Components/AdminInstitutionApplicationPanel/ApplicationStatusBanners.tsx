@@ -27,6 +27,9 @@ export default function ApplicationStatusBanners({
           <p className="text-sm text-amber-900/90 dark:text-amber-200/90">
             Institution: {latest.institutionName} ({formatInstitutionType(latest.institutionType)})
           </p>
+          <p className="mt-1 text-xs font-medium text-amber-900/90 dark:text-amber-200/90">
+            Subscription payment: {latest.subscriptionPaymentStatus === "PAID" ? "PAID" : "PENDING"}
+          </p>
           <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-100/80">
             Submitted on {formatDateDDMMYYYY(latest.createdAt)}
           </p>

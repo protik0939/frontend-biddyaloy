@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  Clock3,
   GraduationCap,
   Home,
   Layers,
@@ -9,22 +10,28 @@ import {
   Settings,
   SquareStack,
   Users,
+  Workflow,
   type LucideIcon,
 } from "lucide-react";
 
 export type DepartmentSection =
   | "overview"
   | "profile"
+  | "notices"
   | "semesters"
+  | "schedules"
   | "batches"
   | "sections"
+  | "classrooms"
   | "courses"
+  | "routines"
   | "courseTeacherAssignments"
   | "courseRegistrations"
   | "teachers"
   | "teacherApplications"
   | "studentApplications"
   | "students"
+  | "transfers"
   | "fees"
   | "posts";
 
@@ -52,12 +59,14 @@ const replaceAcademicTerms = (value: string, isUniversity: boolean) => {
 export const getDepartmentSidebarItems = (isUniversity: boolean): DepartmentSidebarItem[] => [
   { label: "Overview", href: "/", section: "overview", Icon: Home },
   { label: "Profile", href: "/profile", section: "profile", Icon: Settings },
+  { label: "Notices", href: "/notices", section: "notices", Icon: Megaphone },
   {
     label: replaceAcademicTerms("Semesters", isUniversity),
     href: "/semesters",
     section: "semesters",
     Icon: Layers,
   },
+  { label: "Class Slots", href: "/class-slots", section: "schedules", Icon: Clock3 },
   {
     label: replaceAcademicTerms("Batches", isUniversity),
     href: "/batches",
@@ -66,8 +75,9 @@ export const getDepartmentSidebarItems = (isUniversity: boolean): DepartmentSide
   },
   { label: "Sections", href: "/sections", section: "sections", Icon: SquareStack },
   { label: "Courses", href: "/courses", section: "courses", Icon: BookOpen },
+  { label: "Routines", href: "/routines", section: "routines", Icon: Clock3 },
   {
-    label: "Course Teacher Assignment",
+    label: "Teacher Assignment",
     href: "/course-teacher-assignments",
     section: "courseTeacherAssignments",
     Icon: BookOpen,
@@ -92,6 +102,7 @@ export const getDepartmentSidebarItems = (isUniversity: boolean): DepartmentSide
   },
   { label: "Teachers", href: "/teachers", section: "teachers", Icon: GraduationCap },
   { label: "Students", href: "/students", section: "students", Icon: Users },
+  { label: "Transfers", href: "/transfers", section: "transfers", Icon: Workflow },
   { label: "Fees", href: "/fees", section: "fees", Icon: Receipt },
   { label: "Posts", href: "/posts", section: "posts", Icon: Megaphone },
 ];

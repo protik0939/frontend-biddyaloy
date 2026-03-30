@@ -30,6 +30,7 @@ export interface FacultyProfileDetails {
     name: string;
     shortName: string | null;
     institutionLogo: string | null;
+    type: string | null;
   } | null;
   stats: {
     totalDepartments: number;

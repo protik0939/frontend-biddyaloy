@@ -4,6 +4,7 @@ import { Loader2, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
+import NoticeWorkspace from "@/Components/Notice/NoticeWorkspace";
 
 import {
   ApiRequestError,
@@ -21,6 +22,10 @@ import {
   type Semester,
   type Student,
   type StudentAdmissionApplicationStatus,
+  type InstitutionTransferEntityType,
+  type InstitutionOption,
+  type InstitutionTransferRequest,
+  type InstitutionTransferStatus,
   type TeacherJobApplicationStatus,
   type Teacher,
 } from "@/services/Department/departmentManagement.service";
@@ -28,11 +33,13 @@ import ImagebbUploader from "@/Components/ui/ImagebbUploader";
 import PostingManagementPanel from "@/Components/PostingManagement/PostingManagementPanel";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import SearchableSelect from "@/Components/ui/SearchableSelect";
+import DepartmentRoutineWorkspace from "@/app/@department/Components/Sections/DepartmentRoutineWorkspace";
 
 import { type DepartmentSection } from "./departmentSections";
 
 interface DepartmentSectionContentProps {
   section: DepartmentSection;
+  isUniversity?: boolean;
 }
 
 const formatDateDDMMYYYY = (value: string | Date) =>
@@ -63,6 +70,14 @@ const STUDENT_APPLICATION_FILTER_OPTIONS: Array<StudentAdmissionApplicationStatu
   "SHORTLISTED",
   "APPROVED",
   "REJECTED",
+];
+
+const TRANSFER_STATUS_FILTER_OPTIONS: Array<InstitutionTransferStatus | "ALL"> = [
+  "ALL",
+  "PENDING",
+  "ACCEPTED",
+  "REJECTED",
+  "CANCELLED",
 ];
 
 type FeeConfigurationFieldErrors = {
@@ -126,6 +141,7 @@ const mapStudentPaymentLookupFieldErrors = (error: unknown): StudentPaymentLooku
 
 export default function DepartmentSectionContent({
   section,
+  isUniversity = true,
 }: Readonly<DepartmentSectionContentProps>) {
   const [loadingPageData, setLoadingPageData] = useState(false);
 
@@ -236,6 +252,23 @@ export default function DepartmentSectionContent({
   const [updatingStudentId, setUpdatingStudentId] = useState("");
   const [studentSearch, setStudentSearch] = useState("");
 
+  const [transferEntityType, setTransferEntityType] =
+    useState<InstitutionTransferEntityType>("STUDENT");
+  const [transferProfileId, setTransferProfileId] = useState("");
+  const [transferTargetInstitutionId, setTransferTargetInstitutionId] = useState("");
+  const [transferRequestMessage, setTransferRequestMessage] = useState("");
+  const [creatingTransferRequest, setCreatingTransferRequest] = useState(false);
+  const [institutionOptions, setInstitutionOptions] = useState<InstitutionOption[]>([]);
+  const [loadingInstitutionOptions, setLoadingInstitutionOptions] = useState(false);
+  const [transferInstitutionSearch, setTransferInstitutionSearch] = useState("");
+  const [incomingTransfers, setIncomingTransfers] = useState<InstitutionTransferRequest[]>([]);
+  const [outgoingTransfers, setOutgoingTransfers] = useState<InstitutionTransferRequest[]>([]);
+  const [transferStatusFilter, setTransferStatusFilter] =
+    useState<InstitutionTransferStatus | "ALL">("ALL");
+  const [reviewingTransferId, setReviewingTransferId] = useState("");
+  const [transferResponseMessageById, setTransferResponseMessageById] = useState<Record<string, string>>({});
+  const [transferTargetDepartmentIdById, setTransferTargetDepartmentIdById] = useState<Record<string, string>>({});
+
   const [feeConfigurations, setFeeConfigurations] = useState<DepartmentFeeConfiguration[]>([]);
   const [feeSemesterId, setFeeSemesterId] = useState("");
   const [feeTotalAmount, setFeeTotalAmount] = useState("");
@@ -288,6 +321,7 @@ export default function DepartmentSectionContent({
   const debouncedCourseSearch = useDebouncedValue(courseSearch, 1000);
   const debouncedTeacherSearch = useDebouncedValue(teacherSearch, 1000);
   const debouncedStudentSearch = useDebouncedValue(studentSearch, 1000);
+  const debouncedTransferInstitutionSearch = useDebouncedValue(transferInstitutionSearch, 1000);
 
   const canCreateSemester =
     semesterName.trim().length >= 2 &&
@@ -553,6 +587,22 @@ export default function DepartmentSectionContent({
           await reloadStudents();
         }
 
+        if (section === "transfers") {
+          const status = transferStatusFilter === "ALL" ? undefined : transferStatusFilter;
+          await Promise.all([
+            reloadTeachers(),
+            reloadStudents(),
+            reloadInstitutionOptions(),
+            DepartmentManagementService.listIncomingTransferRequests(status),
+            DepartmentManagementService.listOutgoingTransferRequests(status),
+          ]).then(([_, __, ___, incoming, outgoing]) => {
+            if (!cancelled) {
+              setIncomingTransfers(incoming);
+              setOutgoingTransfers(outgoing);
+            }
+          });
+        }
+
         if (section === "fees") {
           await Promise.all([reloadSemesters(), reloadFeeConfigurations()]);
           if (!cancelled) {
@@ -620,7 +670,7 @@ export default function DepartmentSectionContent({
     };
     // We intentionally reload when section changes; reload helpers are local wrappers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [section, teacherApplicationFilter, studentApplicationFilter]);
+  }, [section, teacherApplicationFilter, studentApplicationFilter, transferStatusFilter]);
 
   useEffect(() => {
     setPortalReady(true);
@@ -815,6 +865,13 @@ export default function DepartmentSectionContent({
     }
     void reloadStudents();
   }, [debouncedStudentSearch, section]);
+
+  useEffect(() => {
+    if (section !== "transfers") {
+      return;
+    }
+    void reloadInstitutionOptions();
+  }, [debouncedTransferInstitutionSearch, section]);
 
   const onUpdateProfile = async (event: { preventDefault: () => void }) => {
     event.preventDefault();
@@ -1227,6 +1284,20 @@ export default function DepartmentSectionContent({
     }
   };
 
+  const removeTeacher = async (teacherProfileId: string) => {
+    setUpdatingTeacherId(teacherProfileId);
+    try {
+      await DepartmentManagementService.removeTeacher(teacherProfileId);
+      await reloadTeachers();
+      toast.success("Teacher removed successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to remove teacher";
+      toast.error(message);
+    } finally {
+      setUpdatingTeacherId("");
+    }
+  };
+
   const onCreateStudent = async (event: { preventDefault: () => void }) => {
     event.preventDefault();
 
@@ -1269,6 +1340,105 @@ export default function DepartmentSectionContent({
       toast.error(message);
     } finally {
       setUpdatingStudentId("");
+    }
+  };
+
+  const removeStudent = async (studentProfileId: string) => {
+    setUpdatingStudentId(studentProfileId);
+    try {
+      await DepartmentManagementService.removeStudent(studentProfileId);
+      await reloadStudents();
+      toast.success("Student removed successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to remove student";
+      toast.error(message);
+    } finally {
+      setUpdatingStudentId("");
+    }
+  };
+
+  const reloadTransfers = async () => {
+    const status = transferStatusFilter === "ALL" ? undefined : transferStatusFilter;
+    const [incoming, outgoing] = await Promise.all([
+      DepartmentManagementService.listIncomingTransferRequests(status),
+      DepartmentManagementService.listOutgoingTransferRequests(status),
+    ]);
+    setIncomingTransfers(incoming);
+    setOutgoingTransfers(outgoing);
+  };
+
+  const reloadInstitutionOptions = async (search?: string) => {
+    setLoadingInstitutionOptions(true);
+    try {
+      const data = await DepartmentManagementService.listInstitutionOptions(
+        search ?? debouncedTransferInstitutionSearch,
+      );
+      setInstitutionOptions(data);
+
+      if (!transferTargetInstitutionId && data.length > 0) {
+        setTransferTargetInstitutionId(data[0].id);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load institutions";
+      toast.error(message);
+    } finally {
+      setLoadingInstitutionOptions(false);
+    }
+  };
+
+  const createTransferRequest = async (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+
+    if (!transferProfileId.trim()) {
+      toast.warning("Select a profile to transfer");
+      return;
+    }
+
+    if (!transferTargetInstitutionId.trim()) {
+      toast.warning("Target institution is required");
+      return;
+    }
+
+    setCreatingTransferRequest(true);
+    try {
+      await DepartmentManagementService.createTransferRequest({
+        entityType: transferEntityType,
+        profileId: transferProfileId.trim(),
+        targetInstitutionId: transferTargetInstitutionId.trim(),
+        requestMessage: transferRequestMessage.trim() || undefined,
+      });
+
+      setTransferRequestMessage("");
+      await reloadTransfers();
+      toast.success("Transfer request submitted successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to submit transfer request";
+      toast.error(message);
+    } finally {
+      setCreatingTransferRequest(false);
+    }
+  };
+
+  const reviewTransferRequest = async (
+    transferRequest: InstitutionTransferRequest,
+    status: "ACCEPTED" | "REJECTED",
+  ) => {
+    setReviewingTransferId(transferRequest.id);
+    try {
+      await DepartmentManagementService.reviewTransferRequest(transferRequest.id, {
+        status,
+        responseMessage: transferResponseMessageById[transferRequest.id]?.trim() || undefined,
+        targetDepartmentId:
+          transferTargetDepartmentIdById[transferRequest.id]?.trim() || undefined,
+      });
+
+      await reloadTransfers();
+      toast.success(`Transfer request ${status.toLowerCase()} successfully`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to review transfer request";
+      toast.error(message);
+    } finally {
+      setReviewingTransferId("");
     }
   };
 
@@ -1656,6 +1826,10 @@ export default function DepartmentSectionContent({
 
   if (section === "overview") {
     return null;
+  }
+
+  if (section === "notices") {
+    return <NoticeWorkspace canCompose isUniversity={isUniversity} />;
   }
 
   const loadingIndicator = loadingPageData ? (
@@ -2243,6 +2417,18 @@ export default function DepartmentSectionContent({
         </div>
       </article>
     );
+  }
+
+  if (section === "schedules") {
+    return <DepartmentRoutineWorkspace section="schedules" />;
+  }
+
+  if (section === "classrooms") {
+    return <DepartmentRoutineWorkspace section="classrooms" />;
+  }
+
+  if (section === "routines") {
+    return <DepartmentRoutineWorkspace section="routines" />;
   }
 
   if (section === "courseTeacherAssignments") {
@@ -3182,9 +3368,223 @@ export default function DepartmentSectionContent({
                     {status}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => void removeTeacher(item.id)}
+                  disabled={updatingTeacherId === item.id}
+                  className="rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive disabled:opacity-60"
+                >
+                  Remove
+                </button>
               </div>
             </div>
           ))}
+        </div>
+      </article>
+    );
+  }
+
+  if (section === "transfers") {
+    const transferProfileOptions =
+      transferEntityType === "STUDENT"
+        ? students.map((item) => ({
+            value: item.id,
+            label: `${item.user.name} (${item.studentsId})`,
+          }))
+        : teachers.map((item) => ({
+            value: item.id,
+            label: `${item.user.name} (${item.teachersId})`,
+          }));
+
+    return (
+      <article className="space-y-5 rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
+        <h2 className="text-lg font-semibold">Institution Transfers</h2>
+        {loadingIndicator}
+
+        <form onSubmit={createTransferRequest} className="space-y-3 rounded-xl border border-border/70 bg-background/70 p-4">
+          <h3 className="text-sm font-semibold">Create Transfer Request</h3>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Entity Type</span>
+              <select
+                value={transferEntityType}
+                onChange={(event) => {
+                  const value = event.target.value as InstitutionTransferEntityType;
+                  setTransferEntityType(value);
+                  setTransferProfileId("");
+                }}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+              >
+                <option value="STUDENT">Student</option>
+                <option value="TEACHER">Teacher</option>
+              </select>
+            </label>
+
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Profile</span>
+              <select
+                value={transferProfileId}
+                onChange={(event) => setTransferProfileId(event.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Select profile</option>
+                {transferProfileOptions.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Target Institution</span>
+            <SearchableSelect
+              value={transferTargetInstitutionId}
+              onChange={setTransferTargetInstitutionId}
+              options={institutionOptions.map((item) => ({
+                value: item.id,
+                label: item.shortName ? `${item.name} (${item.shortName})` : item.name,
+                imageUrl: item.institutionLogo,
+              }))}
+              placeholder={
+                loadingInstitutionOptions ? "Loading institutions..." : "Select target institution"
+              }
+              searchPlaceholder="Search institutions"
+              searchValue={transferInstitutionSearch}
+              onSearchValueChange={setTransferInstitutionSearch}
+              emptyText="No institutions found"
+              disabled={loadingInstitutionOptions}
+            />
+          </label>
+
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Request Message (optional)</span>
+            <textarea
+              value={transferRequestMessage}
+              onChange={(event) => setTransferRequestMessage(event.target.value)}
+              rows={3}
+              placeholder="Reason for transfer"
+              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={creatingTransferRequest}
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            {creatingTransferRequest ? "Submitting..." : "Create Transfer Request"}
+          </button>
+        </form>
+
+        <div className="rounded-xl border border-border/70 bg-background/70 p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold">Incoming Requests</h3>
+            <select
+              value={transferStatusFilter}
+              onChange={(event) =>
+                setTransferStatusFilter(event.target.value as InstitutionTransferStatus | "ALL")
+              }
+              className="rounded-lg border border-border bg-background px-2 py-1 text-xs"
+            >
+              {TRANSFER_STATUS_FILTER_OPTIONS.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-3">
+            {incomingTransfers.map((request) => (
+              <div key={request.id} className="rounded-xl border border-border/70 bg-card/80 p-3 text-sm">
+                <p className="font-medium">
+                  {request.entityType} transfer | {request.status}
+                </p>
+                <p className="text-muted-foreground">
+                  From: {request.sourceInstitution?.name ?? request.sourceInstitutionId}
+                </p>
+                <p className="text-muted-foreground">
+                  Profile: {request.teacherProfile?.user?.name ?? request.studentProfile?.user?.name ?? "-"}
+                </p>
+                {request.status === "PENDING" && (
+                  <div className="mt-2 space-y-2">
+                    {request.entityType === "TEACHER" && (
+                      <input
+                        value={transferTargetDepartmentIdById[request.id] ?? ""}
+                        onChange={(event) =>
+                          setTransferTargetDepartmentIdById((prev) => ({
+                            ...prev,
+                            [request.id]: event.target.value,
+                          }))
+                        }
+                        placeholder="Target department UUID (required for teacher)"
+                        className="w-full rounded-lg border border-border bg-background px-2 py-1 text-xs"
+                      />
+                    )}
+                    <input
+                      value={transferResponseMessageById[request.id] ?? ""}
+                      onChange={(event) =>
+                        setTransferResponseMessageById((prev) => ({
+                          ...prev,
+                          [request.id]: event.target.value,
+                        }))
+                      }
+                      placeholder="Response message (optional)"
+                      className="w-full rounded-lg border border-border bg-background px-2 py-1 text-xs"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void reviewTransferRequest(request, "ACCEPTED")}
+                        disabled={reviewingTransferId === request.id}
+                        className="rounded-lg bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void reviewTransferRequest(request, "REJECTED")}
+                        disabled={reviewingTransferId === request.id}
+                        className="rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs font-semibold text-destructive disabled:opacity-60"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+            {incomingTransfers.length === 0 && (
+              <p className="text-sm text-muted-foreground">No incoming transfer requests found.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border/70 bg-background/70 p-4">
+          <h3 className="mb-3 text-sm font-semibold">Outgoing Requests</h3>
+          <div className="space-y-3">
+            {outgoingTransfers.map((request) => (
+              <div key={request.id} className="rounded-xl border border-border/70 bg-card/80 p-3 text-sm">
+                <p className="font-medium">
+                  {request.entityType} transfer | {request.status}
+                </p>
+                <p className="text-muted-foreground">
+                  To: {request.targetInstitution?.name ?? request.targetInstitutionId}
+                </p>
+                <p className="text-muted-foreground">
+                  Profile: {request.teacherProfile?.user?.name ?? request.studentProfile?.user?.name ?? "-"}
+                </p>
+                {request.responseMessage ? (
+                  <p className="mt-1 text-muted-foreground">Response: {request.responseMessage}</p>
+                ) : null}
+              </div>
+            ))}
+            {outgoingTransfers.length === 0 && (
+              <p className="text-sm text-muted-foreground">No outgoing transfer requests found.</p>
+            )}
+          </div>
         </div>
       </article>
     );
@@ -3463,6 +3863,14 @@ export default function DepartmentSectionContent({
                   {status}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => void removeStudent(item.id)}
+                disabled={updatingStudentId === item.id}
+                className="rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive disabled:opacity-60"
+              >
+                Remove
+              </button>
             </div>
           </div>
         ))}

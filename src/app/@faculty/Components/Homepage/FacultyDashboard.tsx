@@ -17,12 +17,12 @@ import { toast } from "sonner";
 import LogoutButton from "@/Components/LogoutButton";
 import SidebarProfileCard from "@/Components/SidebarProfileCard";
 import ThemeToggle from "@/Components/ThemeToggle";
-import UserIdentityBadge from "@/Components/UserIdentityBadge";
 import FacultySectionContent from "@/app/@faculty/Components/Sections/FacultySectionContent";
 import {
   type FacultyProfileDetails,
   getFacultyProfileDetails,
 } from "@/services/Faculty/facultyManagement.service";
+import { NoticeService } from "@/services/Notice/notice.service";
 
 import { facultySidebarItems, type FacultySection } from "../Sections/facultySections";
 
@@ -50,6 +50,17 @@ export default function FacultyDashboard({ section }: Readonly<FacultyDashboardP
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [profileDetails, setProfileDetails] = useState<FacultyProfileDetails | null>(null);
+  const [unreadNoticeCount, setUnreadNoticeCount] = useState(0);
+  const isUniversity = profileDetails?.institution?.type === "UNIVERSITY";
+
+  const loadUnreadNoticeCount = async () => {
+    try {
+      const result = await NoticeService.getUnreadCount();
+      setUnreadNoticeCount(result.unreadCount);
+    } catch {
+      // Keep previous count when unread fetch fails.
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -79,6 +90,22 @@ export default function FacultyDashboard({ section }: Readonly<FacultyDashboardP
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    void loadUnreadNoticeCount();
+
+    if (pathname === "/notices") {
+      const timer = globalThis.setTimeout(() => {
+        void loadUnreadNoticeCount();
+      }, 800);
+
+      return () => {
+        globalThis.clearTimeout(timer);
+      };
+    }
+
+    return undefined;
+  }, [pathname]);
 
   const overviewStats = useMemo(() => {
     const numberFormatter = new Intl.NumberFormat();
@@ -149,6 +176,9 @@ export default function FacultyDashboard({ section }: Readonly<FacultyDashboardP
                   >
                     {item.label}
                   </span>
+                  {item.section === "notices" && unreadNoticeCount > 0 ? (
+                    <span className="ml-auto h-2.5 w-2.5 shrink-0 rounded-full bg-red-500" />
+                  ) : null}
                 </Link>
               );
             })}
@@ -185,15 +215,6 @@ export default function FacultyDashboard({ section }: Readonly<FacultyDashboardP
               </p>
             </div>
             <div className="flex flex-row justify-center gap-3">
-              <UserIdentityBadge
-                userName={profileDetails?.user?.name}
-                userEmail={profileDetails?.user?.email}
-                userImage={profileDetails?.user?.image}
-                institutionName={profileDetails?.institution?.name}
-                institutionShortName={profileDetails?.institution?.shortName}
-                institutionLogo={profileDetails?.institution?.institutionLogo}
-                compact
-              />
               <ThemeToggle />
               <LogoutButton />
             </div>
@@ -309,7 +330,7 @@ export default function FacultyDashboard({ section }: Readonly<FacultyDashboardP
                   </>
                 )}
 
-                <FacultySectionContent section={section} />
+                <FacultySectionContent section={section} isUniversity={isUniversity} />
               </div>
             </div>
           </div>

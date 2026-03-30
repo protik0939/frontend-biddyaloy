@@ -1,5 +1,6 @@
 import {
   Check,
+  Clock3,
   GraduationCap,
   LayoutDashboard,
   Layers3,
@@ -39,7 +40,10 @@ import type {
 } from "@/services/Admin/adminManagement.service";
 import type { InstitutionApplication, InstitutionType } from "@/services/Admin/institutionApplication.service";
 import PostingManagementPanel from "@/Components/PostingManagement/PostingManagementPanel";
+import NoticeWorkspace from "@/Components/Notice/NoticeWorkspace";
+import RoutineBrowser from "@/Components/Routine/RoutineBrowser";
 import SidebarProfileCard from "@/Components/SidebarProfileCard";
+import { NoticeService } from "@/services/Notice/notice.service";
 import SubAdminAccountForm from "./SubAdminAccountForm";
 import type { AdminDashboardSection } from "./types";
 import { formatDateDDMMYYYY, formatInstitutionType } from "./utils";
@@ -107,6 +111,7 @@ export default function AdminDashboard({
   const [profileGender, setProfileGender] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [adminAcademicSection, setAdminAcademicSection] = useState<DepartmentSection>("semesters");
+  const [unreadNoticeCount, setUnreadNoticeCount] = useState(0);
 
   const resolvedInstitutionType =
     (dashboardSummary?.institution?.type as InstitutionType | undefined) ?? approvedInstitutionType;
@@ -161,6 +166,15 @@ export default function AdminDashboard({
     }
   };
 
+  const loadUnreadNoticeCount = async () => {
+    try {
+      const result = await NoticeService.getUnreadCount();
+      setUnreadNoticeCount(result.unreadCount);
+    } catch {
+      // Keep previous count when unread fetch fails.
+    }
+  };
+
   useEffect(() => {
     if (activeSection === "workflow") {
       void reloadSemesters();
@@ -197,6 +211,10 @@ export default function AdminDashboard({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    void loadUnreadNoticeCount();
+  }, [activeSection]);
 
   const onCreateSemester = async (event: { preventDefault: () => void }) => {
     event.preventDefault();
@@ -348,7 +366,7 @@ export default function AdminDashboard({
           "Manage departments, semesters, batches, sections, teachers, students and courses.",
         ),
         icon: Layers3,
-        enabled: !isUniversity,
+        enabled: true,
       },
       {
         title: "Faculty Accounts",
@@ -374,12 +392,14 @@ export default function AdminDashboard({
   }[] = [
       { key: "overview", label: "Overview", icon: LayoutDashboard, enabled: true },
       { key: "profile", label: "Profile", icon: UserCircle2, enabled: true },
+      { key: "notices", label: "Notices", icon: Megaphone, enabled: true },
+      { key: "routines", label: "Routines", icon: Clock3, enabled: true },
       { key: "workflow", label: mapAcademicTerms("Academic Workflow"), icon: Workflow, enabled: true },
       {
         key: "academic",
         label: isUniversity ? "Department Workspace" : "Program Workspace",
         icon: Layers3,
-        enabled: !isUniversity,
+        enabled: true,
       },
       {
         key: "faculty",
@@ -488,6 +508,9 @@ export default function AdminDashboard({
                 >
                   <item.icon className="h-4 w-4 shrink-0" />
                   <span className={`${showSidebar ? "inline" : "hidden"}`}>{item.label}</span>
+                  {item.key === "notices" && unreadNoticeCount > 0 ? (
+                    <span className="ml-auto h-2.5 w-2.5 shrink-0 rounded-full bg-red-500" />
+                  ) : null}
                 </button>
               );
             })}
@@ -688,6 +711,22 @@ export default function AdminDashboard({
             </div>
           )}
 
+          {activeSection === "notices" && (
+            <div className="rounded-xl border border-border/70 bg-background/70 p-4">
+              <NoticeWorkspace
+                canCompose
+                isUniversity={isUniversity}
+                onUnreadCountChange={setUnreadNoticeCount}
+              />
+            </div>
+          )}
+
+          {activeSection === "routines" && (
+            <div className="rounded-xl border border-border/70 bg-background/70 p-4">
+              <RoutineBrowser />
+            </div>
+          )}
+
           {activeSection === "workflow" && (
             <article className="space-y-4 rounded-xl border border-border/70 bg-background/70 p-4">
               <h3 className="text-base font-semibold">{mapAcademicTerms("Semester Management")}</h3>
@@ -860,7 +899,7 @@ export default function AdminDashboard({
                     </button>
                   ))}
               </div>
-              <DepartmentSectionContent section={adminAcademicSection} />
+              <DepartmentSectionContent section={adminAcademicSection} isUniversity={isUniversity} />
             </div>
           )}
 

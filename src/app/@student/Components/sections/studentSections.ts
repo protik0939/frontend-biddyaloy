@@ -1,6 +1,7 @@
 import {
   BookOpen,
   ClipboardList,
+  Clock3,
   GraduationCap,
   Home,
   Receipt,
@@ -11,6 +12,8 @@ import {
 
 export type StudentSection =
   | "overview"
+  | "notices"
+  | "routines"
   | "registeredCourses"
   | "results"
   | "submissions"
@@ -26,6 +29,8 @@ export interface StudentSidebarItem {
 
 export const studentSidebarItems: StudentSidebarItem[] = [
   { label: "Overview", href: "/", section: "overview", Icon: Home },
+  { label: "Notices", href: "/notices", section: "notices", Icon: ClipboardList },
+  { label: "Routines", href: "/routines", section: "routines", Icon: Clock3 },
   {
     label: "Registered Courses",
     href: "/registered-courses",

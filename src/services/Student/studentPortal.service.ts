@@ -1,6 +1,8 @@
 import { toSameOriginUrl } from "@/lib/same-origin";
+import type { DepartmentRoutine } from "@/services/Department/departmentManagement.service";
 
 export type StudentClassworkType = "TASK" | "ASSIGNMENT" | "QUIZ" | "NOTICE";
+export type StudentRoutine = DepartmentRoutine;
 
 type ApiSuccess<T> = {
   success: true;
@@ -502,6 +504,10 @@ async function listRegisteredCourses(query?: { semesterId?: string; search?: str
   return apiGet<StudentRegisteredCourse[]>(`/api/v1/student/registered-courses${queryString}`);
 }
 
+async function listRoutines() {
+  return apiGet<StudentRoutine[]>("/api/v1/student/routines");
+}
+
 async function listResults(query: { semesterId: string }) {
   const queryString = toQueryString({ semesterId: query.semesterId });
   return apiGet<StudentResultResponse>(`/api/v1/student/results${queryString}`);
@@ -547,6 +553,7 @@ export const StudentPortalService = {
   updateProfile,
   listTimeline,
   listRegisteredCourses,
+  listRoutines,
   listResults,
   listSubmissions,
   createSubmission,

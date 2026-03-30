@@ -1,4 +1,5 @@
 import { toSameOriginUrl } from "@/lib/same-origin";
+import type { DepartmentRoutine } from "@/services/Department/departmentManagement.service";
 
 export type AttendanceStatus = "PRESENT" | "ABSENT";
 export type TeacherClassworkType = "TASK" | "ASSIGNMENT" | "QUIZ" | "NOTICE";
@@ -323,6 +324,8 @@ export interface TeacherMarkUpsertPayload {
   finalExam?: number;
 }
 
+export type TeacherRoutine = DepartmentRoutine;
+
 export interface TeacherProfileUpdatePayload {
   name?: string;
   image?: string;
@@ -392,6 +395,10 @@ export const TeacherPortalService = {
   listSectionsWithStudents(search?: string) {
     const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
     return apiGet<TeacherAssignedSection[]>(`/api/v1/teacher/sections${query}`);
+  },
+
+  listRoutines() {
+    return apiGet<TeacherRoutine[]>("/api/v1/teacher/routines");
   },
 
   listClassworks(params?: { sectionId?: string; type?: TeacherClassworkType; search?: string }) {

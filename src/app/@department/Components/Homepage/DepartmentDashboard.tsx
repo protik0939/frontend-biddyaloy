@@ -21,6 +21,7 @@ import {
   DepartmentManagementService,
   type DepartmentDashboardSummary,
 } from "@/services/Department/departmentManagement.service";
+import { NoticeService } from "@/services/Notice/notice.service";
 
 import {
   getDepartmentSidebarItems,
@@ -51,6 +52,7 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [summary, setSummary] = useState<DepartmentDashboardSummary | null>(null);
+  const [unreadNoticeCount, setUnreadNoticeCount] = useState(0);
 
   const isUniversity = summary?.institution?.type === "UNIVERSITY";
 
@@ -69,6 +71,15 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
   };
 
   const sidebarItems = useMemo(() => getDepartmentSidebarItems(isUniversity), [isUniversity]);
+
+  const loadUnreadNoticeCount = async () => {
+    try {
+      const result = await NoticeService.getUnreadCount();
+      setUnreadNoticeCount(result.unreadCount);
+    } catch {
+      // Keep previous count when unread fetch fails.
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -99,6 +110,22 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    void loadUnreadNoticeCount();
+
+    if (pathname === "/notices") {
+      const timer = globalThis.setTimeout(() => {
+        void loadUnreadNoticeCount();
+      }, 800);
+
+      return () => {
+        globalThis.clearTimeout(timer);
+      };
+    }
+
+    return undefined;
+  }, [pathname]);
 
   const overviewStats = useMemo(() => {
     const numberFormatter = new Intl.NumberFormat();
@@ -169,6 +196,9 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
                   >
                     {item.label}
                   </span>
+                  {item.section === "notices" && unreadNoticeCount > 0 ? (
+                    <span className="ml-auto h-2.5 w-2.5 shrink-0 rounded-full bg-red-500" />
+                  ) : null}
                 </Link>
               );
             })}
@@ -328,7 +358,7 @@ export default function DepartmentDashboard({ section }: Readonly<DepartmentDash
                   </>
                 )}
 
-                <DepartmentSectionContent section={section} />
+                <DepartmentSectionContent section={section} isUniversity={isUniversity} />
               </div>
             </div>
           </div>

@@ -13,6 +13,7 @@ import {
   type StudentPortalProfileResponse,
   StudentPortalService,
 } from "@/services/Student/studentPortal.service";
+import { NoticeService } from "@/services/Notice/notice.service";
 
 import StudentSectionContent from "../sections/StudentSectionContent";
 import StudentApplicationGate from "./StudentApplicationGate";
@@ -37,6 +38,16 @@ export default function StudentDashboard({ section }: Readonly<StudentDashboardP
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(!studentProfileCache);
   const [profileState, setProfileState] = useState<StudentPortalProfileResponse | null>(studentProfileCache);
+  const [unreadNoticeCount, setUnreadNoticeCount] = useState(0);
+
+  const loadUnreadNoticeCount = async () => {
+    try {
+      const result = await NoticeService.getUnreadCount();
+      setUnreadNoticeCount(result.unreadCount);
+    } catch {
+      // Keep previous count when unread fetch fails.
+    }
+  };
 
   const reloadProfile = async () => {
     const data = await StudentPortalService.getProfileOverview();
@@ -78,6 +89,22 @@ export default function StudentDashboard({ section }: Readonly<StudentDashboardP
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    void loadUnreadNoticeCount();
+
+    if (pathname === "/notices") {
+      const timer = globalThis.setTimeout(() => {
+        void loadUnreadNoticeCount();
+      }, 800);
+
+      return () => {
+        globalThis.clearTimeout(timer);
+      };
+    }
+
+    return undefined;
+  }, [pathname]);
 
   const overviewStats = useMemo(
     () => [
@@ -213,6 +240,9 @@ export default function StudentDashboard({ section }: Readonly<StudentDashboardP
                   >
                     {item.label}
                   </span>
+                  {item.section === "notices" && unreadNoticeCount > 0 ? (
+                    <span className="ml-auto h-2.5 w-2.5 shrink-0 rounded-full bg-red-500" />
+                  ) : null}
                 </Link>
               );
             })}

@@ -3,11 +3,15 @@
 import { Loader2, Pencil, Save, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import NoticeWorkspace from "@/Components/Notice/NoticeWorkspace";
+import RoutineBrowser from "@/Components/Routine/RoutineBrowser";
 import ImagebbUploader from "@/Components/ui/ImagebbUploader";
 import SearchableSelect from "@/Components/ui/SearchableSelect";
 
 import {
   ApiRequestError,
+  type StudentAcademicRecord,
+  type StudentApplicationProfile,
   type StudentClassworkType,
   type StudentFeeOverview,
   type StudentPortalProfileResponse,
@@ -62,6 +66,9 @@ const formatAmount = (value: number, currency = "BDT") =>
     currency,
     maximumFractionDigits: 2,
   }).format(value);
+
+const createFormRowId = () => Math.random().toString(36).slice(2, 10);
+type StudentAcademicRecordForm = StudentAcademicRecord & { uid: string };
 
 export default function StudentSectionContent({ section }: Readonly<StudentSectionContentProps>) {
   const [loadingPageData, setLoadingPageData] = useState(false);
@@ -119,6 +126,15 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
   const [profileBloodGroup, setProfileBloodGroup] = useState("");
   const [profileGender, setProfileGender] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [applicationProfile, setApplicationProfile] = useState<StudentApplicationProfile | null>(null);
+  const [applicationHeadline, setApplicationHeadline] = useState("");
+  const [applicationAbout, setApplicationAbout] = useState("");
+  const [applicationDocumentUrlsInput, setApplicationDocumentUrlsInput] = useState("");
+  const [applicationAcademicRecords, setApplicationAcademicRecords] = useState<StudentAcademicRecordForm[]>([
+    { uid: createFormRowId(), examName: "", institute: "", result: "", year: new Date().getFullYear() },
+  ]);
+  const [savingApplicationProfile, setSavingApplicationProfile] = useState(false);
+  const [deletingApplicationProfile, setDeletingApplicationProfile] = useState(false);
 
   const syncProfileInputs = useCallback((profile: StudentPortalProfileResponse) => {
     setProfileName(profile.user.name ?? "");
@@ -129,6 +145,15 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
     setProfilePermanentAddress(profile.user.permanentAddress ?? "");
     setProfileBloodGroup(profile.user.bloodGroup ?? "");
     setProfileGender(profile.user.gender ?? "");
+    setApplicationProfile(profile.applicationProfile ?? null);
+    setApplicationHeadline(profile.applicationProfile?.headline ?? "");
+    setApplicationAbout(profile.applicationProfile?.about ?? "");
+    setApplicationDocumentUrlsInput((profile.applicationProfile?.documentUrls ?? []).join(", "));
+    setApplicationAcademicRecords(
+      profile.applicationProfile?.academicRecords?.length
+        ? profile.applicationProfile.academicRecords.map((item) => ({ ...item, uid: createFormRowId() }))
+        : [{ uid: createFormRowId(), examName: "", institute: "", result: "", year: new Date().getFullYear() }],
+    );
   }, []);
 
   const loadTimeline = useCallback(async () => {
@@ -413,6 +438,33 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
     (selectedFeeItem?.dueAmount ?? 0) > 0 &&
     (feePaymentMode === "FULL" || Number(monthsCount) > 0);
 
+  const parseCsvValues = (value: string) =>
+    value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+  const addApplicationAcademicRecord = () => {
+    setApplicationAcademicRecords((prev) => [
+      ...prev,
+      { uid: createFormRowId(), examName: "", institute: "", result: "", year: new Date().getFullYear() },
+    ]);
+  };
+
+  const removeApplicationAcademicRecord = (uid: string) => {
+    setApplicationAcademicRecords((prev) => (prev.length > 1 ? prev.filter((item) => item.uid !== uid) : prev));
+  };
+
+  const updateApplicationAcademicRecord = (
+    uid: string,
+    field: keyof StudentAcademicRecord,
+    value: string | number,
+  ) => {
+    setApplicationAcademicRecords((prev) =>
+      prev.map((item) => (item.uid === uid ? { ...item, [field]: value } : item)),
+    );
+  };
+
   const handleInitiateFeePayment = async () => {
     setFeePaymentErrors({});
 
@@ -574,6 +626,72 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
     }
   };
 
+  const saveApplicationProfile = async (event: React.SyntheticEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const normalized = {
+      headline: applicationHeadline.trim(),
+      about: applicationAbout.trim(),
+      documentUrls: parseCsvValues(applicationDocumentUrlsInput),
+      academicRecords: applicationAcademicRecords.map((item) => ({
+        examName: item.examName.trim(),
+        institute: item.institute.trim(),
+        result: item.result.trim(),
+        year: Number(item.year),
+      })),
+    };
+
+    if (normalized.headline.length < 2 || normalized.about.length < 20) {
+      toast.warning("Headline and about are required");
+      return;
+    }
+
+    if (normalized.documentUrls.length === 0) {
+      toast.warning("At least one document URL is required");
+      return;
+    }
+
+    if (normalized.academicRecords.some((item) => !item.examName || !item.institute || !item.result || !item.year)) {
+      toast.warning("Complete all academic record fields");
+      return;
+    }
+
+    setSavingApplicationProfile(true);
+    try {
+      if (applicationProfile) {
+        await StudentPortalService.updateApplicationProfile(normalized);
+      } else {
+        await StudentPortalService.createApplicationProfile(normalized);
+      }
+
+      const updatedProfile = await StudentPortalService.getProfileOverview();
+      setProfileState(updatedProfile);
+      syncProfileInputs(updatedProfile);
+      toast.success("Application profile saved successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save application profile";
+      toast.error(message);
+    } finally {
+      setSavingApplicationProfile(false);
+    }
+  };
+
+  const removeApplicationProfile = async () => {
+    setDeletingApplicationProfile(true);
+    try {
+      await StudentPortalService.deleteApplicationProfile();
+      const updatedProfile = await StudentPortalService.getProfileOverview();
+      setProfileState(updatedProfile);
+      syncProfileInputs(updatedProfile);
+      toast.success("Application profile deleted successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete application profile";
+      toast.error(message);
+    } finally {
+      setDeletingApplicationProfile(false);
+    }
+  };
+
   if (loadingPageData) {
     return (
       <section className="rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
@@ -663,6 +781,14 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
         </article>
       </div>
     );
+  }
+
+  if (section === "notices") {
+    return <NoticeWorkspace canCompose={false} />;
+  }
+
+  if (section === "routines") {
+    return <RoutineBrowser />;
   }
 
   if (section === "registeredCourses") {
@@ -1254,6 +1380,113 @@ export default function StudentSectionContent({ section }: Readonly<StudentSecti
               {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Profile
             </button>
+          </form>
+        </article>
+
+        <article className="rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-semibold sm:text-lg">Application Profile (For Institution Apply)</h2>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${applicationProfile?.isComplete ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+              {applicationProfile?.isComplete ? "Complete" : "Incomplete"}
+            </span>
+          </div>
+
+          <form className="mt-4 grid gap-3" onSubmit={saveApplicationProfile}>
+            <input
+              value={applicationHeadline}
+              onChange={(event) => setApplicationHeadline(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+              placeholder="Headline"
+            />
+
+            <textarea
+              value={applicationAbout}
+              onChange={(event) => setApplicationAbout(event.target.value)}
+              rows={4}
+              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+              placeholder="About"
+            />
+
+            <input
+              value={applicationDocumentUrlsInput}
+              onChange={(event) => setApplicationDocumentUrlsInput(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+              placeholder="Document URLs (comma separated)"
+            />
+
+            <div className="space-y-2 rounded-xl border border-border/70 bg-background/50 p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">Academic Records</p>
+                <button
+                  type="button"
+                  onClick={addApplicationAcademicRecord}
+                  className="rounded-lg border border-border px-2 py-1 text-xs"
+                >
+                  Add
+                </button>
+              </div>
+
+              {applicationAcademicRecords.map((record) => (
+                <div key={record.uid} className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                  <input
+                    value={record.examName}
+                    onChange={(event) => updateApplicationAcademicRecord(record.uid, "examName", event.target.value)}
+                    className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs"
+                    placeholder="Exam name"
+                  />
+                  <input
+                    value={record.institute}
+                    onChange={(event) => updateApplicationAcademicRecord(record.uid, "institute", event.target.value)}
+                    className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs"
+                    placeholder="Institute"
+                  />
+                  <input
+                    value={record.result}
+                    onChange={(event) => updateApplicationAcademicRecord(record.uid, "result", event.target.value)}
+                    className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs"
+                    placeholder="Result"
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={record.year}
+                      onChange={(event) => updateApplicationAcademicRecord(record.uid, "year", Number(event.target.value))}
+                      className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs"
+                      placeholder="Year"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeApplicationAcademicRecord(record.uid)}
+                      className="rounded-lg border border-destructive/40 px-2 py-1 text-xs text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="submit"
+                disabled={savingApplicationProfile}
+                className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {savingApplicationProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {applicationProfile ? "Update Application Profile" : "Create Application Profile"}
+              </button>
+              {applicationProfile ? (
+                <button
+                  type="button"
+                  onClick={() => void removeApplicationProfile()}
+                  disabled={deletingApplicationProfile}
+                  className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-destructive/40 px-4 py-2 text-sm font-semibold text-destructive disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {deletingApplicationProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  Delete Application Profile
+                </button>
+              ) : null}
+            </div>
           </form>
         </article>
       </div>

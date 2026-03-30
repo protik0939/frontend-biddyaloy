@@ -67,6 +67,60 @@ export interface Semester {
   endDate: string;
 }
 
+export type SlotStatus = "CLASS_SLOT" | "BREAK_SLOT";
+
+export interface DepartmentSchedule {
+  id: string;
+  name: string;
+  description: string | null;
+  semesterId: string | null;
+  semester?: {
+    id: string;
+    name: string;
+  } | null;
+  startTime: string;
+  endTime: string;
+  status: SlotStatus;
+  departmentId: string | null;
+  department?: {
+    id: string;
+    fullName: string;
+    shortName: string | null;
+  } | null;
+}
+
+export type ClassRoomType =
+  | "LAB"
+  | "LECTURE"
+  | "SEMINAR"
+  | "LIBRARY"
+  | "TEACHER_ROOM"
+  | "STUDENT_LOUNGE"
+  | "ADMIN_OFFICE";
+
+export interface Classroom {
+  id: string;
+  name: string | null;
+  roomNo: string;
+  floor: string;
+  capacity: number;
+  roomType: ClassRoomType;
+  institutionId: string;
+}
+
+export interface DepartmentRoutine {
+  id: string;
+  name: string;
+  description: string | null;
+  version: string | null;
+  scheduleId: string;
+  courseRegistrationId: string;
+  classRoomId: string;
+  schedule: DepartmentSchedule;
+  classRoom: Classroom;
+  courseRegistration: CourseRegistration;
+}
+
 export interface Batch {
   id: string;
   name: string;
@@ -224,6 +278,75 @@ export interface Student {
     email: string;
     accountStatus: string;
   };
+}
+
+export type InstitutionTransferEntityType = "STUDENT" | "TEACHER";
+export type InstitutionTransferStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "CANCELLED";
+
+export interface InstitutionTransferRequest {
+  id: string;
+  entityType: InstitutionTransferEntityType;
+  status: InstitutionTransferStatus;
+  sourceInstitutionId: string;
+  targetInstitutionId: string;
+  targetDepartmentId: string | null;
+  requestMessage: string | null;
+  responseMessage: string | null;
+  requestedAt: string;
+  reviewedAt: string | null;
+  createdAt: string;
+  sourceInstitution?: {
+    id: string;
+    name: string;
+    shortName: string | null;
+  };
+  targetInstitution?: {
+    id: string;
+    name: string;
+    shortName: string | null;
+  };
+  requesterUser?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  reviewerUser?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+  studentProfile?: {
+    id: string;
+    studentsId: string;
+    user?: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  } | null;
+  teacherProfile?: {
+    id: string;
+    teacherInitial: string;
+    teachersId: string;
+    user?: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  } | null;
+  targetDepartment?: {
+    id: string;
+    fullName: string;
+    shortName: string | null;
+  } | null;
+}
+
+export interface InstitutionOption {
+  id: string;
+  name: string;
+  shortName: string | null;
+  institutionLogo: string | null;
+  type: string | null;
 }
 
 export type TeacherJobApplicationStatus = "PENDING" | "SHORTLISTED" | "APPROVED" | "REJECTED";
@@ -552,6 +675,79 @@ export const DepartmentManagementService = {
     return apiGet<Semester[]>(`/api/v1/department/semesters${query}`);
   },
 
+  listSchedules(search?: string, semesterId?: string) {
+    const searchParams = new URLSearchParams();
+    if (search?.trim()) {
+      searchParams.set("search", search.trim());
+    }
+    if (semesterId?.trim()) {
+      searchParams.set("semesterId", semesterId.trim());
+    }
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return apiGet<DepartmentSchedule[]>(`/api/v1/department/schedules${query}`);
+  },
+
+  createSchedule(payload: {
+    name: string;
+    description?: string;
+    semesterId: string;
+    startTime: string;
+    endTime: string;
+    status?: SlotStatus;
+  }) {
+    return apiPost<DepartmentSchedule>("/api/v1/department/schedules", payload);
+  },
+
+  updateSchedule(
+    scheduleId: string,
+    payload: {
+      name?: string;
+      description?: string;
+      semesterId?: string;
+      startTime?: string;
+      endTime?: string;
+      status?: SlotStatus;
+    },
+  ) {
+    return apiPatch<DepartmentSchedule>(`/api/v1/department/schedules/${scheduleId}`, payload);
+  },
+
+  deleteSchedule(scheduleId: string) {
+    return apiDelete<{ id: string }>(`/api/v1/department/schedules/${scheduleId}`);
+  },
+
+  listClassrooms(search?: string) {
+    const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+    return apiGet<Classroom[]>(`/api/v1/classrooms${query}`);
+  },
+
+  createClassroom(payload: {
+    name?: string;
+    roomNo: string;
+    floor: string;
+    capacity: number;
+    roomType: ClassRoomType;
+  }) {
+    return apiPost<Classroom>("/api/v1/classrooms", payload);
+  },
+
+  updateClassroom(
+    classroomId: string,
+    payload: {
+      name?: string;
+      roomNo?: string;
+      floor?: string;
+      capacity?: number;
+      roomType?: ClassRoomType;
+    },
+  ) {
+    return apiPatch<Classroom>(`/api/v1/classrooms/${classroomId}`, payload);
+  },
+
+  deleteClassroom(classroomId: string) {
+    return apiDelete<{ id: string }>(`/api/v1/classrooms/${classroomId}`);
+  },
+
   listBatches(search?: string) {
     const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
     return apiGet<Batch[]>(`/api/v1/department/batches${query}`);
@@ -641,8 +837,15 @@ export const DepartmentManagementService = {
     return apiDelete<{ id: string }>(`/api/v1/department/courses/${courseId}`);
   },
 
-  listCourseRegistrations(search?: string) {
-    const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+  listCourseRegistrations(search?: string, semesterId?: string) {
+    const searchParams = new URLSearchParams();
+    if (search?.trim()) {
+      searchParams.set("search", search.trim());
+    }
+    if (semesterId?.trim()) {
+      searchParams.set("semesterId", semesterId.trim());
+    }
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
     return apiGet<CourseRegistration[]>(`/api/v1/department/course-registrations${query}`);
   },
 
@@ -658,6 +861,47 @@ export const DepartmentManagementService = {
     semesterId: string;
   }) {
     return apiPost<SectionCourseTeacherAssignment>("/api/v1/department/course-teacher-assignments", payload);
+  },
+
+  listRoutines(search?: string, semesterId?: string) {
+    const searchParams = new URLSearchParams();
+    if (search?.trim()) {
+      searchParams.set("search", search.trim());
+    }
+    if (semesterId?.trim()) {
+      searchParams.set("semesterId", semesterId.trim());
+    }
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return apiGet<DepartmentRoutine[]>(`/api/v1/department/routines${query}`);
+  },
+
+  createRoutine(payload: {
+    name: string;
+    description?: string;
+    version?: string;
+    scheduleId: string;
+    courseRegistrationId: string;
+    classRoomId: string;
+  }) {
+    return apiPost<DepartmentRoutine>("/api/v1/department/routines", payload);
+  },
+
+  updateRoutine(
+    routineId: string,
+    payload: {
+      name?: string;
+      description?: string;
+      version?: string;
+      scheduleId?: string;
+      courseRegistrationId?: string;
+      classRoomId?: string;
+    },
+  ) {
+    return apiPatch<DepartmentRoutine>(`/api/v1/department/routines/${routineId}`, payload);
+  },
+
+  deleteRoutine(routineId: string) {
+    return apiDelete<{ id: string }>(`/api/v1/department/routines/${routineId}`);
   },
 
   createCourseRegistration(payload: {
@@ -716,6 +960,14 @@ export const DepartmentManagementService = {
     });
   },
 
+  removeTeacher(teacherProfileId: string) {
+    return apiDelete<{
+      teacherProfileId: string;
+      userId: string;
+      accountStatus: AccountStatus;
+    }>(`/api/v1/department/teachers/${teacherProfileId}/remove`);
+  },
+
   listStudents(search?: string) {
     const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
     return apiGet<Student[]>(`/api/v1/department/students${query}`);
@@ -735,6 +987,80 @@ export const DepartmentManagementService = {
     return apiPatch<Student>(`/api/v1/department/students/${studentProfileId}`, {
       accountStatus,
     });
+  },
+
+  removeStudent(studentProfileId: string) {
+    return apiDelete<{
+      studentProfileId: string;
+      userId: string;
+      accountStatus: AccountStatus;
+    }>(`/api/v1/department/students/${studentProfileId}/remove`);
+  },
+
+  createTransferRequest(payload: {
+    entityType: InstitutionTransferEntityType;
+    profileId: string;
+    targetInstitutionId: string;
+    requestMessage?: string;
+  }) {
+    return apiPost<InstitutionTransferRequest>("/api/v1/department/transfers", payload);
+  },
+
+  listInstitutionOptions(search?: string) {
+    const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+    return apiGet<InstitutionOption[]>(`/api/v1/institute/options${query}`);
+  },
+
+  listOutgoingTransferRequests(
+    status?: InstitutionTransferStatus,
+    entityType?: InstitutionTransferEntityType,
+  ) {
+    const query = new URLSearchParams();
+    if (status) {
+      query.set("status", status);
+    }
+    if (entityType) {
+      query.set("entityType", entityType);
+    }
+
+    const queryString = query.toString();
+    const requestPath = "/api/v1/department/transfers/outgoing" + (queryString ? `?${queryString}` : "");
+    return apiGet<InstitutionTransferRequest[]>(
+      requestPath,
+    );
+  },
+
+  listIncomingTransferRequests(
+    status?: InstitutionTransferStatus,
+    entityType?: InstitutionTransferEntityType,
+  ) {
+    const query = new URLSearchParams();
+    if (status) {
+      query.set("status", status);
+    }
+    if (entityType) {
+      query.set("entityType", entityType);
+    }
+
+    const queryString = query.toString();
+    const requestPath = "/api/v1/department/transfers/incoming" + (queryString ? `?${queryString}` : "");
+    return apiGet<InstitutionTransferRequest[]>(
+      requestPath,
+    );
+  },
+
+  reviewTransferRequest(
+    transferRequestId: string,
+    payload: {
+      status: "ACCEPTED" | "REJECTED";
+      responseMessage?: string;
+      targetDepartmentId?: string;
+    },
+  ) {
+    return apiPatch<InstitutionTransferRequest>(
+      `/api/v1/department/transfers/${transferRequestId}/review`,
+      payload,
+    );
   },
 
   listTeacherApplications(status?: TeacherJobApplicationStatus) {

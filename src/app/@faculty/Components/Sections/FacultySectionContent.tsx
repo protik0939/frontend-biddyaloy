@@ -3,6 +3,7 @@
 import { Loader2, Save, UserPlus2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import NoticeWorkspace from "@/Components/Notice/NoticeWorkspace";
 
 import {
   createDepartmentAccount,
@@ -11,15 +12,23 @@ import {
 } from "@/services/Faculty/facultyManagement.service";
 import ImagebbUploader from "@/Components/ui/ImagebbUploader";
 import PostingManagementPanel from "@/Components/PostingManagement/PostingManagementPanel";
+import RoutineBrowser from "@/Components/Routine/RoutineBrowser";
+import DepartmentSectionContent from "@/app/@department/Components/Sections/DepartmentSectionContent";
+import {
+  getDepartmentSidebarItems,
+  type DepartmentSection,
+} from "@/app/@department/Components/Sections/departmentSections";
 
 import { type FacultySection } from "./facultySections";
 
 interface FacultySectionContentProps {
   section: FacultySection;
+  isUniversity?: boolean;
 }
 
 export default function FacultySectionContent({
   section,
+  isUniversity = true,
 }: Readonly<FacultySectionContentProps>) {
   const [profileFullName, setProfileFullName] = useState("");
   const [profileShortName, setProfileShortName] = useState("");
@@ -41,6 +50,7 @@ export default function FacultySectionContent({
   const [accountDepartmentShortName, setAccountDepartmentShortName] = useState("");
   const [accountDepartmentDescription, setAccountDepartmentDescription] = useState("");
   const [creatingAccount, setCreatingAccount] = useState(false);
+  const [academicSection, setAcademicSection] = useState<DepartmentSection>("semesters");
 
   const canUpdateProfile = profileFullName.trim().length >= 2;
   const canCreateAccount = useMemo(() => {
@@ -175,6 +185,18 @@ export default function FacultySectionContent({
 
   if (section === "overview") {
     return null;
+  }
+
+  if (section === "notices") {
+    return <NoticeWorkspace canCompose isUniversity={isUniversity} />;
+  }
+
+  if (section === "routines") {
+    return <RoutineBrowser />;
+  }
+
+  if (section === "classrooms") {
+    return <DepartmentSectionContent section="classrooms" isUniversity={isUniversity} />;
   }
 
   if (section === "profile") {
@@ -423,6 +445,38 @@ export default function FacultySectionContent({
         <div className="mt-4">
           <PostingManagementPanel scope="FACULTY" />
         </div>
+      </article>
+    );
+  }
+
+  if (section === "academicWorkspace") {
+    return (
+      <article className="space-y-4 rounded-xl border border-border/70 bg-background/70 p-4">
+        <h2 className="text-base font-semibold">Academic Workspace</h2>
+        <p className="text-sm text-muted-foreground">
+          Manage department-level academic operations, transfers, and account lifecycle actions.
+        </p>
+
+        <div className="flex flex-wrap gap-2">
+          {getDepartmentSidebarItems(true)
+            .filter((item) => item.section !== "overview" && item.section !== "profile")
+            .map((item) => (
+              <button
+                key={item.section}
+                type="button"
+                onClick={() => setAcademicSection(item.section)}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                  academicSection === item.section
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background text-foreground"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+        </div>
+
+        <DepartmentSectionContent section={academicSection} isUniversity={isUniversity} />
       </article>
     );
   }

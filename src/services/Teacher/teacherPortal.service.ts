@@ -103,13 +103,13 @@ export interface TeacherPortalProfileResponse {
     teachersId: string;
     designation: string;
     bio: string | null;
-    institutionId: string | null;
+    institutionId: string;
     institution: {
       id: string;
       name: string;
       shortName: string | null;
       institutionLogo: string | null;
-    } | null;
+    };
     department: {
       id: string;
       fullName: string;

@@ -752,7 +752,7 @@ export default function TeacherSectionContent({ section }: Readonly<TeacherSecti
             </div>
             <div className="rounded-xl border border-border/70 bg-background/60 px-3 py-2 md:col-span-2">
               <p className="text-xs text-muted-foreground">Institution</p>
-              <p className="font-medium">{profileState?.profile?.institution?.name ?? "-"}</p>
+              <p className="font-medium">{profileState?.profile?.institution.name ?? "-"}</p>
             </div>
           </div>
         </article>

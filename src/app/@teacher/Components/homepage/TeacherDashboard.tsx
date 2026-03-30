@@ -314,7 +314,7 @@ export default function TeacherDashboard({ section }: Readonly<TeacherDashboardP
               <p className="text-sm font-medium text-primary">Teacher Control Center</p>
               <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Teacher Dashboard</h1>
               <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-                {profileState?.profile?.institution.name ?? "Institution"} • {profileState?.profile?.department?.fullName ?? "Department"}
+                {profileState?.profile?.institution?.name ?? "Institution"} • {profileState?.profile?.department?.fullName ?? "Department"}
               </p>
             </div>
             <div className="flex flex-row justify-center gap-3">

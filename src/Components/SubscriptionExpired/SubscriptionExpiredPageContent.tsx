@@ -63,11 +63,11 @@ export default function SubscriptionExpiredPageContent({
               <select
                 name="plan"
                 defaultValue="YEARLY"
-                className="h-10 rounded-lg border border-emerald-300 bg-white px-3 text-sm text-foreground"
+                className="h-10 rounded-lg border border-emerald-300 bg-white px-3 text-sm text-slate-900 dark:text-slate-900"
               >
-                <option value="MONTHLY">Monthly - BDT 500</option>
-                <option value="HALF_YEARLY">Half Yearly - BDT 2,800</option>
-                <option value="YEARLY">Yearly - BDT 5,600</option>
+                <option value="MONTHLY" className="bg-white text-slate-900">Monthly - BDT 500</option>
+                <option value="HALF_YEARLY" className="bg-white text-slate-900">Half Yearly - BDT 2,800</option>
+                <option value="YEARLY" className="bg-white text-slate-900">Yearly - BDT 5,600</option>
               </select>
               <button
                 type="submit"

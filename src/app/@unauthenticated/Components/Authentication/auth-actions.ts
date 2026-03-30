@@ -547,3 +547,46 @@ export async function leaveInstitutionAndLogoutAction(formData: FormData) {
     redirect(`/subscription-expired?toast=${encodeURIComponent(message)}&toastType=error`);
   }
 }
+
+export async function initiateInstitutionSubscriptionRenewalAction(formData: FormData) {
+  const plan = getString(formData, "plan").trim().toUpperCase();
+  const allowedPlans = new Set(["MONTHLY", "HALF_YEARLY", "YEARLY"]);
+
+  if (!allowedPlans.has(plan)) {
+    redirect("/subscription-expired?toast=Invalid%20renewal%20plan&toastType=error");
+  }
+
+  const backendBase = getBackendBaseUrl();
+  if (!backendBase) {
+    redirect(
+      "/subscription-expired?toast=Backend%20URL%20is%20not%20configured&toastType=error",
+    );
+  }
+
+  const endpoint = `${backendBase.endsWith("/") ? backendBase.slice(0, -1) : backendBase}/api/v1/institution-admin/subscription/renew/initiate`;
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore.getAll().map((item) => `${item.name}=${item.value}`).join("; ");
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+    },
+    body: JSON.stringify({ plan }),
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    message?: string;
+    data?: { paymentUrl?: string };
+  };
+
+  if (!response.ok || !payload?.data?.paymentUrl) {
+    const message = payload.message ?? "Failed to initiate subscription renewal";
+    redirect(`/subscription-expired?toast=${encodeURIComponent(message)}&toastType=error`);
+  }
+
+  redirect(payload.data.paymentUrl);
+}

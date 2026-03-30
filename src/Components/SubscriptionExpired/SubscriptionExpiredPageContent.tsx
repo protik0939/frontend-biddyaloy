@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  initiateInstitutionSubscriptionRenewalAction,
   leaveInstitutionAndLogoutAction,
   logoutAction,
 } from "@/app/@unauthenticated/Components/Authentication/auth-actions";
@@ -39,14 +40,6 @@ export default function SubscriptionExpiredPageContent({
               Sign in with another account
             </button>
           </form>
-          {canRenew ? (
-            <Link
-              href="/admin"
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
-            >
-              Institution Admin: Renew Subscription
-            </Link>
-          ) : null}
           {canLeaveInstitution ? (
             <form action={leaveInstitutionAndLogoutAction}>
               <input type="hidden" name="reason" value="Requested leave from subscription expired screen" />
@@ -61,8 +54,34 @@ export default function SubscriptionExpiredPageContent({
         </div>
 
         {canRenew ? (
+          <form action={initiateInstitutionSubscriptionRenewalAction} className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+            <p className="text-sm font-semibold text-emerald-700">Renew institution subscription</p>
+            <p className="mt-1 text-xs text-emerald-700/80">
+              Select a plan and continue to SSLCommerz to complete renewal.
+            </p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+              <select
+                name="plan"
+                defaultValue="YEARLY"
+                className="h-10 rounded-lg border border-emerald-300 bg-white px-3 text-sm text-foreground"
+              >
+                <option value="MONTHLY">Monthly - BDT 500</option>
+                <option value="HALF_YEARLY">Half Yearly - BDT 2,800</option>
+                <option value="YEARLY">Yearly - BDT 5,600</option>
+              </select>
+              <button
+                type="submit"
+                className="h-10 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white"
+              >
+                Institution Admin: Renew Subscription
+              </button>
+            </div>
+          </form>
+        ) : null}
+
+        {canRenew ? (
           <p className="mt-3 text-xs text-muted-foreground">
-            Institution admins can use the renewal action above to open the admin portal and continue subscription payment.
+            After successful payment, access is restored automatically for your institution.
           </p>
         ) : null}
         {canLeaveInstitution ? (

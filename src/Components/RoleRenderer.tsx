@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface RoleRendererProps {
@@ -23,6 +24,48 @@ export default function RoleRenderer({
   unauthenticated,
 }: Readonly<RoleRendererProps>) {
   const { userRole } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  React.useEffect(() => {
+    if (userRole === 'UNAUTHENTICATED') {
+      return;
+    }
+
+    let cancelled = false;
+
+    const verifyAccess = async () => {
+      try {
+        const response = await fetch('/api/v1/auth/access-status', {
+          method: 'GET',
+          credentials: 'include',
+          cache: 'no-store',
+        });
+
+        const payload = (await response.json().catch(() => ({}))) as {
+          success?: boolean;
+          code?: string;
+        };
+
+        if (
+          !cancelled &&
+          response.status === 402 &&
+          payload.code === 'INSTITUTION_SUBSCRIPTION_EXPIRED' &&
+          pathname !== '/subscription-expired'
+        ) {
+          router.replace('/subscription-expired');
+        }
+      } catch {
+        // Avoid navigation on network errors; page-level handlers can display details.
+      }
+    };
+
+    void verifyAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userRole, pathname, router]);
 
   const getRoleContent = () => {
     switch (userRole) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import type {
@@ -14,7 +14,13 @@ import {
 } from "@/services/Admin/adminManagement.service";
 import {
   createInstitutionApplication,
+  getAdminInstitutionFeePayments,
+  getInstitutionSubscriptionPricing,
   getMyInstitutionApplications,
+  initiateInstitutionSubscriptionPayment,
+  type InstitutionStudentPaymentReport,
+  type InstitutionSubscriptionPlan,
+  type InstitutionSubscriptionPricingItem,
   type CreateInstitutionApplicationPayload,
   type InstitutionApplication,
 } from "@/services/Admin/institutionApplication.service";
@@ -27,6 +33,39 @@ import ThemeToggle from "@/Components/ThemeToggle";
 import LogoutButton from "@/Components/LogoutButton";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
+async function createSubAdminAccountWithToast(payload: CreateInstitutionSubAdminPayload) {
+  try {
+    const created = await createInstitutionSubAdminAccount(payload);
+    const accountKind = payload.accountType === "FACULTY" ? "Faculty" : "Department";
+    const details: string[] = [];
+
+    if (created.faculty?.fullName) {
+      details.push(`Faculty: ${created.faculty.fullName}`);
+    }
+
+    if (created.department?.fullName) {
+      details.push(`Department: ${created.department.fullName}`);
+    }
+
+    const detailsText = details.length > 0 ? ` (${details.join(" | ")})` : "";
+    toast.success(`${accountKind} account created for ${created.email}${detailsText}`);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to create faculty or department account";
+    toast.error(message);
+    throw error;
+  }
+}
+
+async function initiateSubscriptionPaymentWithRedirect(
+  applicationId: string,
+  plan: InstitutionSubscriptionPlan,
+) {
+  const result = await initiateInstitutionSubscriptionPayment(applicationId, { plan });
+  globalThis.location.assign(result.paymentUrl);
+}
+
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export default function AdminInstitutionApplicationPanel() {
   const [applications, setApplications] = useState<InstitutionApplication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,11 +75,19 @@ export default function AdminInstitutionApplicationPanel() {
   const [faculties, setFaculties] = useState<InstitutionFacultyOption[]>([]);
   const [facultiesLoading, setFacultiesLoading] = useState(false);
   const [facultySearchTerm, setFacultySearchTerm] = useState("");
+  const [pricing, setPricing] = useState<InstitutionSubscriptionPricingItem[]>([]);
+  const [selectedPlan, setSelectedPlan] = useState<InstitutionSubscriptionPlan>("MONTHLY");
+  const [initiatingPayment, setInitiatingPayment] = useState(false);
+  const [institutionPayments, setInstitutionPayments] = useState<InstitutionStudentPaymentReport | null>(null);
+  const [loadingInstitutionPayments, setLoadingInstitutionPayments] = useState(false);
   const debouncedFacultySearchTerm = useDebouncedValue(facultySearchTerm, 1000);
 
   const latest = applications[0];
   const isApproved = latest?.status === "APPROVED";
   const approvedInstitutionType = latest?.institutionType;
+  const latestPaymentStatus = latest?.subscriptionPaymentStatus ?? "PENDING";
+  const needsSubscriptionPayment =
+    Boolean(latest) && latest?.status === "PENDING" && latestPaymentStatus !== "PAID";
 
   const canSubmit = useMemo(() => {
     return (
@@ -64,6 +111,34 @@ export default function AdminInstitutionApplicationPanel() {
 
   useEffect(() => {
     void loadMyApplications();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPricing = async () => {
+      try {
+        const items = await getInstitutionSubscriptionPricing();
+        if (!cancelled) {
+          setPricing(items);
+          if (items.length > 0) {
+            setSelectedPlan(items[0].plan);
+          }
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const message =
+            error instanceof Error ? error.message : "Failed to load subscription pricing";
+          toast.error(message);
+        }
+      }
+    };
+
+    void loadPricing();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -125,28 +200,61 @@ export default function AdminInstitutionApplicationPanel() {
   };
 
   const handleCreateSubAdminAccount = async (payload: CreateInstitutionSubAdminPayload) => {
+    await createSubAdminAccountWithToast(payload);
+  };
+
+  const handleInitiateSubscriptionPayment = async () => {
+    if (!latest?.id) {
+      toast.warning("No pending application found for payment");
+      return;
+    }
+
+    setInitiatingPayment(true);
     try {
-      const created = await createInstitutionSubAdminAccount(payload);
-      const accountKind = payload.accountType === "FACULTY" ? "Faculty" : "Department";
-      const details: string[] = [];
-
-      if (created.faculty?.fullName) {
-        details.push(`Faculty: ${created.faculty.fullName}`);
-      }
-
-      if (created.department?.fullName) {
-        details.push(`Department: ${created.department.fullName}`);
-      }
-
-      const detailsText = details.length > 0 ? ` (${details.join(" | ")})` : "";
-      toast.success(`${accountKind} account created for ${created.email}${detailsText}`);
+      await initiateSubscriptionPaymentWithRedirect(latest.id, selectedPlan);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to create faculty or department account";
+        error instanceof Error ? error.message : "Failed to initialize subscription payment";
       toast.error(message);
-      throw error;
+    } finally {
+      setInitiatingPayment(false);
     }
   };
+
+  useEffect(() => {
+    if (!isApproved) {
+      setInstitutionPayments(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadInstitutionPayments = async () => {
+      setLoadingInstitutionPayments(true);
+      try {
+        const report = await getAdminInstitutionFeePayments();
+        if (!cancelled) {
+          setInstitutionPayments(report);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const message =
+            error instanceof Error ? error.message : "Failed to load student payment report";
+          toast.error(message);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingInstitutionPayments(false);
+        }
+      }
+    };
+
+    void loadInstitutionPayments();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isApproved]);
 
   useEffect(() => {
     if (!isApproved) {
@@ -208,6 +316,51 @@ export default function AdminInstitutionApplicationPanel() {
     );
   }
 
+  let institutionPaymentsContent: ReactNode;
+  if (loadingInstitutionPayments) {
+    institutionPaymentsContent = (
+      <p className="mt-3 text-sm text-muted-foreground">Loading payment report...</p>
+    );
+  } else if (institutionPayments && institutionPayments.payments.length > 0) {
+    institutionPaymentsContent = (
+      <div className="mt-3 overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-muted-foreground">
+              <th className="px-2 py-2 font-medium">Student</th>
+              <th className="px-2 py-2 font-medium">Student ID</th>
+              <th className="px-2 py-2 font-medium">Semester</th>
+              <th className="px-2 py-2 font-medium">Mode</th>
+              <th className="px-2 py-2 font-medium">Amount</th>
+              <th className="px-2 py-2 font-medium">Paid At</th>
+            </tr>
+          </thead>
+          <tbody>
+            {institutionPayments.payments.slice(0, 30).map((item) => (
+              <tr key={item.id} className="border-b border-border/60">
+                <td className="px-2 py-2">
+                  <p className="font-medium">{item.studentName}</p>
+                  <p className="text-xs text-muted-foreground">{item.studentEmail ?? "N/A"}</p>
+                </td>
+                <td className="px-2 py-2">{item.studentsId ?? "N/A"}</td>
+                <td className="px-2 py-2">{item.semesterName}</td>
+                <td className="px-2 py-2">{item.paymentMode}</td>
+                <td className="px-2 py-2 font-semibold">
+                  {item.amount} {item.currency}
+                </td>
+                <td className="px-2 py-2">{item.paidAt ? new Date(item.paidAt).toLocaleString() : "N/A"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  } else {
+    institutionPaymentsContent = (
+      <p className="mt-3 text-sm text-muted-foreground">No student fee payments found yet.</p>
+    );
+  }
+
   return (
     <section className="relative space-y-5 overflow-hidden rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm sm:p-6">
       <header>
@@ -238,6 +391,50 @@ export default function AdminInstitutionApplicationPanel() {
         onDismissApprovedBanner={dismissApprovedBanner}
       />
 
+      {needsSubscriptionPayment && latest ? (
+        <article className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <h2 className="text-base font-semibold">Complete subscription payment to continue</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Your application is submitted. Choose a subscription period and pay now so superadmin can approve your institution.
+          </p>
+
+          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+            {pricing.map((item) => {
+              const isSelected = item.plan === selectedPlan;
+              return (
+                <button
+                  key={item.plan}
+                  type="button"
+                  onClick={() => setSelectedPlan(item.plan)}
+                  className={`rounded-lg border p-3 text-left transition ${
+                    isSelected
+                      ? "border-primary bg-primary/10"
+                      : "border-border bg-background hover:border-primary/40"
+                  }`}
+                >
+                  <p className="text-sm font-semibold">{item.label}</p>
+                  <p className="mt-1 text-sm text-muted-foreground line-through">
+                    {item.originalAmount} Tk
+                  </p>
+                  <p className="text-lg font-bold text-primary">{item.amount} Tk</p>
+                  <p className="text-xs text-muted-foreground">{item.support}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void handleInitiateSubscriptionPayment()}
+            disabled={initiatingPayment || pricing.length === 0}
+            className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {initiatingPayment ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {initiatingPayment ? "Redirecting to payment..." : "Pay Now"}
+          </button>
+        </article>
+      ) : null}
+
       {isApproved && latest && (
         <AdminDashboard
           latest={latest}
@@ -262,6 +459,16 @@ export default function AdminInstitutionApplicationPanel() {
       )}
 
       <ApplicationHistory applications={applications} />
+
+      {isApproved ? (
+        <section className="rounded-xl border border-border/70 bg-background/70 p-4">
+          <h2 className="text-base font-semibold">Student fee payments to your institution</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Institution-wise payment transactions made by students.
+          </p>
+          {institutionPaymentsContent}
+        </section>
+      ) : null}
     </section>
   );
 }

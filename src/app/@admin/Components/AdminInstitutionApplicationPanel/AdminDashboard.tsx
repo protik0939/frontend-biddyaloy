@@ -2,6 +2,8 @@ import {
   Check,
   Clock3,
   GraduationCap,
+  Eye,
+  EyeOff,
   LayoutDashboard,
   Layers3,
   Loader2,
@@ -27,7 +29,9 @@ import {
   createInstitutionSemester,
   deleteInstitutionSemester,
   getInstitutionAdminDashboardSummary,
+  getInstitutionSslCommerzCredentialSettings,
   listInstitutionSemesters,
+  upsertInstitutionSslCommerzCredentialSettings,
   updateInstitutionAdminProfile,
   updateInstitutionSemester,
 } from "@/services/Admin/adminManagement.service";
@@ -35,6 +39,7 @@ import type {
   CreateInstitutionSubAdminPayload,
   InstitutionAdminDashboardSummary,
   InstitutionFacultyOption,
+  InstitutionSslCommerzCredentialSettings,
   InstitutionSemester,
   InstitutionSubAdminAccountType,
 } from "@/services/Admin/adminManagement.service";
@@ -75,6 +80,7 @@ type Props = Readonly<{
   onFacultySearchChange: (value: string) => void;
 }>;
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export default function AdminDashboard({
   latest,
   approvedInstitutionType,
@@ -111,6 +117,16 @@ export default function AdminDashboard({
   const [profileBloodGroup, setProfileBloodGroup] = useState("");
   const [profileGender, setProfileGender] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [sslCommerzSettings, setSslCommerzSettings] =
+    useState<InstitutionSslCommerzCredentialSettings | null>(null);
+  const [loadingSslCommerzSettings, setLoadingSslCommerzSettings] = useState(false);
+  const [savingSslCommerzSettings, setSavingSslCommerzSettings] = useState(false);
+  const [sslStoreId, setSslStoreId] = useState("");
+  const [sslStorePassword, setSslStorePassword] = useState("");
+  const [sslBaseUrl, setSslBaseUrl] = useState("");
+  const [showSslStoreId, setShowSslStoreId] = useState(false);
+  const [showSslStorePassword, setShowSslStorePassword] = useState(false);
+  const [showSslBaseUrl, setShowSslBaseUrl] = useState(false);
   const [adminAcademicSection, setAdminAcademicSection] = useState<DepartmentSection>("semesters");
   const [unreadNoticeCount, setUnreadNoticeCount] = useState(0);
 
@@ -215,6 +231,43 @@ export default function AdminDashboard({
 
   useEffect(() => {
     void loadUnreadNoticeCount();
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (activeSection !== "settings") {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadSslCommerzSettings = async () => {
+      setLoadingSslCommerzSettings(true);
+      try {
+        const data = await getInstitutionSslCommerzCredentialSettings();
+        if (!cancelled) {
+          setSslCommerzSettings(data);
+          setSslBaseUrl(data.baseUrl ?? "");
+          setSslStoreId("");
+          setSslStorePassword("");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const message =
+            error instanceof Error ? error.message : "Failed to load SSLCommerz settings";
+          toast.error(message);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingSslCommerzSettings(false);
+        }
+      }
+    };
+
+    void loadSslCommerzSettings();
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeSection]);
 
   const onCreateSemester = async (event: { preventDefault: () => void }) => {
@@ -350,6 +403,45 @@ export default function AdminDashboard({
       toast.error(message);
     } finally {
       setDeletingSemesterId("");
+    }
+  };
+
+  const onSaveSslCommerzSettings = async (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+
+    if (!sslCommerzSettings?.isConfigured && (!sslStoreId.trim() || !sslStorePassword.trim() || !sslBaseUrl.trim())) {
+      toast.warning("Store ID, Store Password and Base URL are required for initial setup");
+      return;
+    }
+
+    if (
+      sslCommerzSettings?.isConfigured &&
+      !sslStoreId.trim() &&
+      !sslStorePassword.trim() &&
+      !sslBaseUrl.trim()
+    ) {
+      toast.warning("Provide at least one field to update");
+      return;
+    }
+
+    setSavingSslCommerzSettings(true);
+    try {
+      const updated = await upsertInstitutionSslCommerzCredentialSettings({
+        storeId: sslStoreId.trim() || undefined,
+        storePassword: sslStorePassword.trim() || undefined,
+        baseUrl: sslBaseUrl.trim() || undefined,
+      });
+
+      setSslCommerzSettings(updated);
+      setSslStoreId("");
+      setSslStorePassword("");
+      setSslBaseUrl(updated.baseUrl ?? "");
+      toast.success("SSLCommerz settings updated successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update SSLCommerz settings";
+      toast.error(message);
+    } finally {
+      setSavingSslCommerzSettings(false);
     }
   };
 
@@ -923,11 +1015,96 @@ export default function AdminDashboard({
           )}
 
           {activeSection === "settings" && (
-            <div className="rounded-xl border border-border/70 bg-background/70 p-4">
+            <div className="space-y-4 rounded-xl border border-border/70 bg-background/70 p-4">
               <h3 className="text-base font-semibold">Admin Settings</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 Configure institution profile preferences and admin-level dashboard settings.
               </p>
+
+              <article className="rounded-xl border border-border/70 bg-card/80 p-4">
+                <h4 className="text-sm font-semibold">Institution SSLCommerz Credentials</h4>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  These credentials are stored securely (encrypted + hashed) and used for student fee payments into your institution account.
+                </p>
+
+                {loadingSslCommerzSettings ? (
+                  <p className="mt-3 text-sm text-muted-foreground">Loading SSLCommerz settings...</p>
+                ) : (
+                  <form className="mt-4 space-y-3" onSubmit={onSaveSslCommerzSettings}>
+                    <label className="block space-y-1 text-sm">
+                      <span className="font-medium">SSLCOMMERZ_STORE_ID</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type={showSslStoreId ? "text" : "password"}
+                          value={sslStoreId}
+                          onChange={(event) => setSslStoreId(event.target.value)}
+                          placeholder={sslCommerzSettings?.storeIdMasked ?? "Enter store id"}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSslStoreId((prev) => !prev)}
+                          className="inline-flex rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground"
+                          aria-label="Toggle store id visibility"
+                        >
+                          {showSslStoreId ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </label>
+
+                    <label className="block space-y-1 text-sm">
+                      <span className="font-medium">SSLCOMMERZ_STORE_PASSWORD</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type={showSslStorePassword ? "text" : "password"}
+                          value={sslStorePassword}
+                          onChange={(event) => setSslStorePassword(event.target.value)}
+                          placeholder={sslCommerzSettings?.hasStorePassword ? "********" : "Enter store password"}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSslStorePassword((prev) => !prev)}
+                          className="inline-flex rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground"
+                          aria-label="Toggle store password visibility"
+                        >
+                          {showSslStorePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </label>
+
+                    <label className="block space-y-1 text-sm">
+                      <span className="font-medium">SSLCOMMERZ_BASE_URL</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type={showSslBaseUrl ? "text" : "password"}
+                          value={sslBaseUrl}
+                          onChange={(event) => setSslBaseUrl(event.target.value)}
+                          placeholder="https://sandbox.sslcommerz.com"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSslBaseUrl((prev) => !prev)}
+                          className="inline-flex rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground"
+                          aria-label="Toggle base url visibility"
+                        >
+                          {showSslBaseUrl ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </label>
+
+                    <button
+                      type="submit"
+                      disabled={savingSslCommerzSettings}
+                      className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {savingSslCommerzSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      Save SSLCommerz Credentials
+                    </button>
+                  </form>
+                )}
+              </article>
             </div>
           )}
         </div>

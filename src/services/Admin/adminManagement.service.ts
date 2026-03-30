@@ -88,6 +88,21 @@ export interface InstitutionAdminProfileUpdatePayload {
   gender?: string;
 }
 
+export interface InstitutionSslCommerzCredentialSettings {
+  isConfigured: boolean;
+  storeIdMasked: string | null;
+  hasStorePassword: boolean;
+  baseUrl: string | null;
+  updatedAt: string | null;
+  isActive: boolean;
+}
+
+export interface UpsertInstitutionSslCommerzCredentialPayload {
+  storeId?: string;
+  storePassword?: string;
+  baseUrl?: string;
+}
+
 type ApiSuccess<T> = {
   success: true;
   message?: string;
@@ -221,4 +236,29 @@ export async function updateInstitutionAdminProfile(payload: InstitutionAdminPro
   });
 
   return parseResponse<InstitutionAdminDashboardSummary>(response);
+}
+
+export async function getInstitutionSslCommerzCredentialSettings() {
+  const response = await fetch(getApiPath("/institution-admin/payment-gateway/sslcommerz"), {
+    method: "GET",
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  return parseResponse<InstitutionSslCommerzCredentialSettings>(response);
+}
+
+export async function upsertInstitutionSslCommerzCredentialSettings(
+  payload: UpsertInstitutionSslCommerzCredentialPayload,
+) {
+  const response = await fetch(getApiPath("/institution-admin/payment-gateway/sslcommerz"), {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return parseResponse<InstitutionSslCommerzCredentialSettings>(response);
 }

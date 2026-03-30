@@ -1,6 +1,7 @@
 import TopBanner from "@/app/@unauthenticated/Components/HomePage/Sections/TopBanner";
 import FooterSection from "@/app/@unauthenticated/Components/HomePage/Sections/FooterSection";
 import FeatureHighlights from "./Sections/FeatureHighlights";
+import PricingPlansSection from "./Sections/PricingPlansSection";
 import StatsStrip from "./Sections/StatsStrip";
 import StepsSection from "./Sections/StepsSection";
 import AboutSection from "./Sections/AboutSection";
@@ -13,6 +14,7 @@ export default function UnauthenticatedHome() {
       <main>
         <TopBanner />
         <FeatureHighlights />
+        <PricingPlansSection />
         <StatsStrip />
         <StepsSection />
         <AboutSection />

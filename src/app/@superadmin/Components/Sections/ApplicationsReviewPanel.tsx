@@ -7,15 +7,11 @@ import SearchableSelect from "@/Components/ui/SearchableSelect";
 
 import {
   getSuperAdminInstitutionFeePayments,
-  getSuperAdminInstitutionLeaveRequests,
   getInstitutionApplicationsForSuperAdmin,
-  reviewSuperAdminInstitutionLeaveRequest,
   reviewInstitutionApplication,
   type InstitutionStudentPaymentReport,
   type InstitutionApplication,
   type InstitutionApplicationStatus,
-  type InstitutionLeaveRequestItem,
-  type InstitutionLeaveRequestStatus,
 } from "@/services/Admin/institutionApplication.service";
 
 function formatDate(value: string) {
@@ -33,10 +29,6 @@ export default function ApplicationsReviewPanel() {
   const [paymentReport, setPaymentReport] = useState<InstitutionStudentPaymentReport | null>(null);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [institutionFilter, setInstitutionFilter] = useState<string>("ALL");
-  const [leaveStatusFilter, setLeaveStatusFilter] = useState<InstitutionLeaveRequestStatus | "ALL">("PENDING");
-  const [leaveRequests, setLeaveRequests] = useState<InstitutionLeaveRequestItem[]>([]);
-  const [leaveLoading, setLeaveLoading] = useState(false);
-  const [leaveProcessingId, setLeaveProcessingId] = useState<string | null>(null);
 
   const pendingCount = useMemo(
     () => applications.filter((application) => application.status === "PENDING").length,
@@ -78,25 +70,6 @@ export default function ApplicationsReviewPanel() {
   useEffect(() => {
     void loadPaymentReport();
   }, [loadPaymentReport]);
-
-  const loadLeaveRequests = useCallback(async () => {
-    setLeaveLoading(true);
-    try {
-      const result = await getSuperAdminInstitutionLeaveRequests(
-        leaveStatusFilter === "ALL" ? undefined : leaveStatusFilter,
-      );
-      setLeaveRequests(result);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to load leave requests";
-      toast.error(message);
-    } finally {
-      setLeaveLoading(false);
-    }
-  }, [leaveStatusFilter]);
-
-  useEffect(() => {
-    void loadLeaveRequests();
-  }, [loadLeaveRequests]);
 
   const institutionOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -292,98 +265,6 @@ export default function ApplicationsReviewPanel() {
     }
   };
 
-  const handleLeaveReview = async (
-    requestId: string,
-    status: Extract<InstitutionLeaveRequestStatus, "APPROVED" | "REJECTED">,
-  ) => {
-    setLeaveProcessingId(requestId);
-    try {
-      await reviewSuperAdminInstitutionLeaveRequest(requestId, { status });
-      toast.success(
-        status === "APPROVED" ? "Leave request approved" : "Leave request rejected",
-      );
-      await loadLeaveRequests();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to review leave request";
-      toast.error(message);
-    } finally {
-      setLeaveProcessingId(null);
-    }
-  };
-
-  let leaveRequestsContent: ReactNode;
-  if (leaveLoading) {
-    leaveRequestsContent = <p className="text-sm text-muted-foreground">Loading leave requests...</p>;
-  } else if (leaveRequests.length === 0) {
-    leaveRequestsContent = (
-      <p className="text-sm text-muted-foreground">No leave requests found for this filter.</p>
-    );
-  } else {
-    leaveRequestsContent = (
-      <div className="space-y-3">
-        {leaveRequests.map((leaveRequest) => {
-          const isPending = leaveRequest.status === "PENDING";
-          const isProcessing = leaveProcessingId === leaveRequest.id;
-
-          return (
-            <article key={leaveRequest.id} className="rounded-xl border border-border/70 bg-card/70 p-3">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold">
-                    {leaveRequest.requesterUser?.name ?? "Unknown User"} ({leaveRequest.requesterRole})
-                  </p>
-                  <p className="text-xs text-muted-foreground">{leaveRequest.requesterUser?.email ?? "N/A"}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Institution: {leaveRequest.institution?.name ?? "Unknown Institution"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Requested: {formatDate(leaveRequest.createdAt)}</p>
-                </div>
-                <span className="rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium">
-                  {leaveRequest.status}
-                </span>
-              </div>
-
-              {leaveRequest.reason ? (
-                <p className="mt-2 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-                  Reason: {leaveRequest.reason}
-                </p>
-              ) : null}
-
-              {!isPending && leaveRequest.reviewedAt ? (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Reviewed at {formatDate(leaveRequest.reviewedAt)} by {leaveRequest.reviewedByUser?.name ?? "Unknown Reviewer"}
-                </p>
-              ) : null}
-
-              {isPending ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={isProcessing}
-                    onClick={() => void handleLeaveReview(leaveRequest.id, "APPROVED")}
-                    className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    <Check className="h-4 w-4" />
-                    Approve Leave
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isProcessing}
-                    onClick={() => void handleLeaveReview(leaveRequest.id, "REJECTED")}
-                    className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    <X className="h-4 w-4" />
-                    Reject
-                  </button>
-                </div>
-              ) : null}
-            </article>
-          );
-        })}
-      </div>
-    );
-  }
-
   return (
     <section className="rounded-2xl border border-border/70 bg-card/90 p-4 shadow-sm sm:p-5">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -447,41 +328,6 @@ export default function ApplicationsReviewPanel() {
         </div>
 
         {paymentsContent}
-      </div>
-
-      <div className="mt-6 rounded-xl border border-border/70 bg-background/70 p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h4 className="text-base font-semibold">Teacher/Student leave requests</h4>
-            <p className="text-xs text-muted-foreground">Superadmin can approve or reject leave requests submitted after institution expiry.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <SearchableSelect
-              value={leaveStatusFilter}
-              onChange={(next) => setLeaveStatusFilter(next as InstitutionLeaveRequestStatus | "ALL")}
-              options={[
-                { value: "ALL", label: "All" },
-                { value: "PENDING", label: "Pending" },
-                { value: "APPROVED", label: "Approved" },
-                { value: "REJECTED", label: "Rejected" },
-              ]}
-              placeholder="Pending"
-              searchPlaceholder="Search status..."
-              emptyText="No status found"
-              className="min-w-40"
-            />
-            <button
-              type="button"
-              onClick={() => void loadLeaveRequests()}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </button>
-          </div>
-        </div>
-
-        {leaveRequestsContent}
       </div>
     </section>
   );

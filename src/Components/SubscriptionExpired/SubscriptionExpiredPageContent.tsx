@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   initiateInstitutionSubscriptionRenewalAction,
-  leaveInstitutionAndLogoutAction,
   logoutAction,
 } from "@/app/@unauthenticated/Components/Authentication/auth-actions";
 
@@ -40,17 +39,6 @@ export default function SubscriptionExpiredPageContent({
               Sign in with another account
             </button>
           </form>
-          {canLeaveInstitution ? (
-            <form action={leaveInstitutionAndLogoutAction}>
-              <input type="hidden" name="reason" value="Requested leave from subscription expired screen" />
-              <button
-                type="submit"
-                className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700"
-              >
-                Leave Institution
-              </button>
-            </form>
-          ) : null}
         </div>
 
         {canRenew ? (
@@ -82,11 +70,6 @@ export default function SubscriptionExpiredPageContent({
         {canRenew ? (
           <p className="mt-3 text-xs text-muted-foreground">
             After successful payment, access is restored automatically for your institution.
-          </p>
-        ) : null}
-        {canLeaveInstitution ? (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Students, teachers, and admins can submit a leave request from here and sign out safely.
           </p>
         ) : null}
       </section>

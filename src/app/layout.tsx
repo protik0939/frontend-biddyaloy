@@ -22,12 +22,9 @@ export const metadata: Metadata = {
   description: "Educational Management System",
   metadataBase: new URL(siteBaseUrl),
   icons: {
-    icon: [
-      { url: "/favicon.ico", type: "image/x-icon" },
-      { url: "/logo/BidyaloylogoIconOnly.svg", type: "image/svg+xml" },
-    ],
-    shortcut: ["/favicon.ico"],
-    apple: [{ url: "/favicon.ico" }],
+    icon: [{ url: "/logo/Biddyaloylogo.svg", type: "image/svg+xml" }],
+    shortcut: ["/logo/Biddyaloylogo.svg"],
+    apple: [{ url: "/logo/Biddyaloylogo.svg" }],
   },
   openGraph: {
     title: "Biddyaloy",

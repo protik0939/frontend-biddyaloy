@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function SubscriptionExpiredPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-linear-to-br from-rose-50 via-background to-amber-50 px-4 py-16 text-foreground dark:from-rose-950/20 dark:to-amber-950/20">
+    <main className="fixed top-0 w-full flex min-h-screen items-center justify-center bg-linear-to-br from-rose-50 via-background to-amber-50 px-4 py-16 text-foreground dark:from-rose-950/20 dark:to-amber-950/20">
       <section className="w-full max-w-2xl rounded-2xl border border-border/70 bg-background/95 p-6 shadow-lg sm:p-8">
         <p className="inline-flex rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-rose-700 dark:text-rose-300">
           Subscription Expired

@@ -28,6 +28,11 @@ export default function RoleRenderer({
   const pathname = usePathname();
 
   React.useEffect(() => {
+    if (userRole === 'UNAUTHENTICATED' && pathname === '/subscription-expired') {
+      router.replace('/login');
+      return;
+    }
+
     if (userRole === 'UNAUTHENTICATED') {
       return;
     }

@@ -500,3 +500,46 @@ export async function logoutAction() {
   await clearAuthCookies();
   redirect("/login?toast=Logout%20successful&toastType=success");
 }
+
+async function requestLeaveInstitution(reason?: string) {
+  const backendBase = getBackendBaseUrl();
+  if (!backendBase) {
+    return;
+  }
+
+  const normalizedBase = backendBase.endsWith("/") ? backendBase.slice(0, -1) : backendBase;
+  const endpoint = `${normalizedBase}/api/v1/auth/leave-institution`;
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore.getAll().map((item) => `${item.name}=${item.value}`).join("; ");
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+    },
+    body: JSON.stringify({ reason }),
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as { message?: string };
+
+  if (!response.ok) {
+    throw new Error(payload.message ?? "Failed to submit leave request");
+  }
+}
+
+export async function leaveInstitutionAndLogoutAction(formData: FormData) {
+  const reason = getString(formData, "reason").trim();
+
+  try {
+    await requestLeaveInstitution(reason || undefined);
+    await tryBackendSignOut();
+    await clearAuthCookies();
+    redirect("/login?toast=Leave%20request%20submitted%20and%20logged%20out&toastType=success");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to submit leave request";
+    redirect(`/subscription-expired?toast=${encodeURIComponent(message)}&toastType=error`);
+  }
+}

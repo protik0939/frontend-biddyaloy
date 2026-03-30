@@ -3,7 +3,7 @@ import Link from 'next/link'
 export default function NotFoundComponent() {
     return (
         <section className="fixed top-0 w-full flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-10 sm:px-6 lg:px-8">
-            <div className="pointer-events-none absolute inset-0"> (Design this like it would 3000 cut it as line, ans show 2800)
+            <div className="pointer-events-none absolute inset-0">
                 <div className="absolute -left-20 top-12 h-64 w-64 rounded-full bg-primary/20 blur-3xl" />
                 <div className="absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-accent/25 blur-3xl" />
             </div>

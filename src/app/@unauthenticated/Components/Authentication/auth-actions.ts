@@ -468,6 +468,10 @@ async function clearAuthCookies() {
 
   cookieStore.delete("auth_token");
   cookieStore.delete("user_role");
+  cookieStore.set("user_role", "UNAUTHENTICATED", {
+    path: "/",
+    sameSite: "lax",
+  });
   cookieStore.delete(PENDING_VERIFICATION_COOKIE);
   cookieStore.delete(PENDING_VERIFICATION_EMAIL_COOKIE);
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useCallback, useMemo, useState, ReactNode } from 'react';
+import React, { createContext, useCallback, useEffect, useMemo, useState, ReactNode } from 'react';
 
 export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'FACULTY' | 'DEPARTMENT' | 'TEACHER' | 'STUDENT' | 'UNAUTHENTICATED';
 
@@ -53,6 +53,21 @@ export function AuthProvider({
 }: Readonly<{ children: ReactNode; initialRole?: UserRole }>) {
   const [roleOverride, setRoleOverride] = useState<UserRole | null>(null);
   const cookieRole = readRoleFromCookie();
+
+  useEffect(() => {
+    if (roleOverride === null) {
+      return;
+    }
+
+    if (cookieRole === null) {
+      setRoleOverride(null);
+      return;
+    }
+
+    if (cookieRole !== roleOverride) {
+      setRoleOverride(cookieRole);
+    }
+  }, [cookieRole, roleOverride]);
 
   const userRole = roleOverride ?? cookieRole ?? initialRole ?? 'UNAUTHENTICATED';
 

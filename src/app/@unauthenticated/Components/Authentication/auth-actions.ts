@@ -539,13 +539,14 @@ export async function leaveInstitutionAndLogoutAction(formData: FormData) {
 
   try {
     await requestLeaveInstitution(reason || undefined);
-    await tryBackendSignOut();
-    await clearAuthCookies();
-    redirect("/login?toast=Leave%20request%20submitted%20and%20logged%20out&toastType=success");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to submit leave request";
     redirect(`/subscription-expired?toast=${encodeURIComponent(message)}&toastType=error`);
   }
+
+  await tryBackendSignOut();
+  await clearAuthCookies();
+  redirect("/login?toast=Leave%20request%20submitted%20and%20logged%20out&toastType=success");
 }
 
 export async function initiateInstitutionSubscriptionRenewalAction(formData: FormData) {

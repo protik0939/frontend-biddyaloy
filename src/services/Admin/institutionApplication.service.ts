@@ -116,6 +116,36 @@ export interface InstitutionStudentPaymentReport {
   payments: InstitutionStudentPaymentItem[];
 }
 
+export type InstitutionLeaveRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface InstitutionLeaveRequestItem {
+  id: string;
+  requesterUserId: string;
+  requesterRole: "TEACHER" | "STUDENT";
+  institutionId: string;
+  status: InstitutionLeaveRequestStatus;
+  reason: string | null;
+  reviewedByUserId: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  requesterUser?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  institution?: {
+    id: string;
+    name: string;
+    shortName: string | null;
+    type: InstitutionType;
+  };
+  reviewedByUser?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+}
+
 export interface SuperAdminDashboardSummary {
   user: {
     id: string;
@@ -289,4 +319,34 @@ export async function getAdminInstitutionFeePayments() {
   });
 
   return parseResponse<InstitutionStudentPaymentReport>(response);
+}
+
+export async function getSuperAdminInstitutionLeaveRequests(status?: InstitutionLeaveRequestStatus) {
+  const query = status ? `?status=${status}` : "";
+  const response = await fetch(getApiPath(`/auth/leave-institution/superadmin${query}`), {
+    method: "GET",
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  return parseResponse<InstitutionLeaveRequestItem[]>(response);
+}
+
+export async function reviewSuperAdminInstitutionLeaveRequest(
+  requestId: string,
+  payload: { status: Extract<InstitutionLeaveRequestStatus, "APPROVED" | "REJECTED"> },
+) {
+  const response = await fetch(
+    getApiPath(`/auth/leave-institution/superadmin/${requestId}/review`),
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    },
+  );
+
+  return parseResponse<InstitutionLeaveRequestItem>(response);
 }

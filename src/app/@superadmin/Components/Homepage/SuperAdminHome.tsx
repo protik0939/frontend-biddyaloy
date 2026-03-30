@@ -267,13 +267,6 @@ export default function SuperAdminHome({ section }: Readonly<SuperAdminHomeProps
               </p>
             </div>
             <div className="flex flex-row justify-center gap-3">
-              <UserIdentityBadge
-                userName={summary?.user?.name}
-                userEmail={summary?.user?.email}
-                userImage={summary?.user?.image}
-                institutionName="Biddyaloy Platform"
-                compact
-              />
               <ThemeToggle />
               <LogoutButton />
             </div>

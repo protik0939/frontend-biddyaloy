@@ -19,6 +19,10 @@ import {
   getDepartmentSidebarItems,
   type DepartmentSection,
 } from "@/app/@department/Components/Sections/departmentSections";
+import {
+  DepartmentManagementService,
+  type WorkspaceDepartmentOption,
+} from "@/services/Department/departmentManagement.service";
 
 import { type FacultySection } from "./facultySections";
 
@@ -52,6 +56,11 @@ export default function FacultySectionContent({
   const [accountDepartmentDescription, setAccountDepartmentDescription] = useState("");
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [academicSection, setAcademicSection] = useState<DepartmentSection>("semesters");
+  const [workspaceDepartments, setWorkspaceDepartments] = useState<WorkspaceDepartmentOption[]>([]);
+  const [activeWorkspaceDepartmentId, setActiveWorkspaceDepartmentId] = useState("");
+  const [loadingWorkspaceDepartments, setLoadingWorkspaceDepartments] = useState(false);
+  const [switchingWorkspaceDepartment, setSwitchingWorkspaceDepartment] = useState(false);
+  const [workspaceRefreshKey, setWorkspaceRefreshKey] = useState(0);
 
   const canUpdateProfile = profileFullName.trim().length >= 2;
   const canCreateAccount = useMemo(() => {
@@ -116,6 +125,52 @@ export default function FacultySectionContent({
       cancelled = true;
     };
   }, [section]);
+
+  const loadWorkspaceDepartments = async () => {
+    setLoadingWorkspaceDepartments(true);
+    try {
+      const result = await DepartmentManagementService.listWorkspaceDepartments();
+      setWorkspaceDepartments(result.departments);
+
+      const fallbackDepartmentId = result.departments[0]?.id ?? "";
+      setActiveWorkspaceDepartmentId(result.activeDepartmentId ?? fallbackDepartmentId);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to load workspace departments";
+      toast.error(message);
+    } finally {
+      setLoadingWorkspaceDepartments(false);
+    }
+  };
+
+  useEffect(() => {
+    if (section !== "academicWorkspace") {
+      return;
+    }
+
+    void loadWorkspaceDepartments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section]);
+
+  const onChangeWorkspaceDepartment = async (departmentId: string) => {
+    if (!departmentId || departmentId === activeWorkspaceDepartmentId) {
+      return;
+    }
+
+    setSwitchingWorkspaceDepartment(true);
+    try {
+      const result = await DepartmentManagementService.setActiveWorkspaceDepartment(departmentId);
+      setActiveWorkspaceDepartmentId(result.activeDepartmentId);
+      setWorkspaceRefreshKey((prev) => prev + 1);
+      toast.success("Academic workspace switched successfully");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to switch active workspace department";
+      toast.error(message);
+    } finally {
+      setSwitchingWorkspaceDepartment(false);
+    }
+  };
 
   const onUpdateProfile = async (event: { preventDefault: () => void }) => {
     event.preventDefault();
@@ -462,8 +517,30 @@ export default function FacultySectionContent({
           Manage department-level academic operations, transfers, and account lifecycle actions.
         </p>
 
+        <div className="rounded-xl border border-border/70 bg-card/70 p-3">
+          <label className="block space-y-2 text-sm">
+            <span className="font-medium">Active {isUniversity ? "Department" : "Program"}</span>
+            <select
+              value={activeWorkspaceDepartmentId}
+              onChange={(event) => void onChangeWorkspaceDepartment(event.target.value)}
+              disabled={loadingWorkspaceDepartments || switchingWorkspaceDepartment || workspaceDepartments.length === 0}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            >
+              {workspaceDepartments.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.shortName ? `${item.shortName} - ${item.fullName}` : item.fullName}
+                  {item.faculty?.fullName ? ` (${item.faculty.fullName})` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          {loadingWorkspaceDepartments || switchingWorkspaceDepartment ? (
+            <p className="mt-2 text-xs text-muted-foreground">Syncing workspace scope...</p>
+          ) : null}
+        </div>
+
         <div className="flex flex-wrap gap-2">
-          {getDepartmentSidebarItems(true)
+          {getDepartmentSidebarItems(isUniversity)
             .filter((item) => item.section !== "overview" && item.section !== "profile")
             .map((item) => (
               <button
@@ -481,7 +558,11 @@ export default function FacultySectionContent({
             ))}
         </div>
 
-        <DepartmentSectionContent section={academicSection} isUniversity={isUniversity} />
+        <DepartmentSectionContent
+          key={`faculty-academic-workspace-${workspaceRefreshKey}`}
+          section={academicSection}
+          isUniversity={isUniversity}
+        />
       </article>
     );
   }

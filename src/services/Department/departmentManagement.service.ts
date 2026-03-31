@@ -27,6 +27,22 @@ export interface DepartmentProfile {
   } | null;
 }
 
+export interface WorkspaceDepartmentOption {
+  id: string;
+  fullName: string;
+  shortName: string | null;
+  faculty: {
+    id: string;
+    fullName: string;
+    shortName: string | null;
+  } | null;
+}
+
+export interface DepartmentWorkspaceOptions {
+  activeDepartmentId: string | null;
+  departments: WorkspaceDepartmentOption[];
+}
+
 import { toSameOriginUrl } from "@/lib/same-origin";
 
 export interface DepartmentDashboardSummary {
@@ -637,6 +653,19 @@ async function apiPatch<T>(path: string, body: Record<string, unknown>) {
   return parseResponse<T>(response);
 }
 
+async function apiPut<T>(path: string, body: Record<string, unknown>) {
+  const response = await fetch(getApiPath(path), {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  return parseResponse<T>(response);
+}
+
 async function apiDelete<T>(path: string) {
   const response = await fetch(getApiPath(path), {
     method: "DELETE",
@@ -647,6 +676,17 @@ async function apiDelete<T>(path: string) {
 }
 
 export const DepartmentManagementService = {
+  listWorkspaceDepartments() {
+    return apiGet<DepartmentWorkspaceOptions>("/api/v1/department/workspace/departments");
+  },
+
+  setActiveWorkspaceDepartment(departmentId: string) {
+    return apiPut<{ activeDepartmentId: string; department: WorkspaceDepartmentOption }>(
+      "/api/v1/department/workspace/active-department",
+      { departmentId },
+    );
+  },
+
   getDashboardSummary() {
     return apiGet<DepartmentDashboardSummary>("/api/v1/department/dashboard-summary");
   },
